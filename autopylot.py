@@ -198,18 +198,55 @@ def create_bot_frame(root_frame, bot_names):
     return bot_frame
 
 
-class GameView:
+class GameCanvas:
     def __init__(self, controller: GameController):
-        pass
+
+        self.max_x = self.max_y = 25
+        self.width = 512
+        self.height = self.width * self.max_x / self.max_y
+        self.controller = controller
+
+        self.x_scale_factor = self.width / self.max_x
+        self.y_scale_factor = self.height / self.max_y
+        self.canvas = Canvas(mainframe, background='black', width=self.width, height=self.height)
+        self.canvas.grid(column=1, row=3, rowspan=3)
+
+        self.planet_shapes = {}
+        self.planet_labels = {}
+
+        self.initialise_canvas()
+        self.update_canvas()
+
+    def get_player_color(self, player: int):
+        return 'green' if player == 1 else 'red' if player == 2 else 'blue'
+
+    def initialise_canvas(self):
+        for planet in controller.game_state.get_planets():
+            x_pos, y_pos = planet.x_pos * self.x_scale_factor, planet.y_pos * self.y_scale_factor
+            size = (planet.ship_growth + 3) * 3.5
+            shape = self.canvas.create_oval((x_pos, y_pos, x_pos + size, y_pos + size))
+            self.planet_shapes[planet.planet_id] = shape
+
+            label = self.canvas.create_text(x_pos + size / 2, y_pos + size / 2, fill='white', anchor='center')
+            self.planet_labels[planet.planet_id] = label
+
+    def update_canvas(self):
+
+        for planet_id, oval_id in self.planet_shapes.items():
+            planet = self.controller.game_state.get_planet_by_id(planet_id)
+            color = self.get_player_color(planet.player)
+            self.canvas.itemconfig(oval_id, fill=color)
+
+        for planet_id, label_id in self.planet_labels.items():
+            planet = self.controller.game_state.get_planet_by_id(planet_id)
+            self.canvas.itemconfig(label_id, text=str(planet.ships))
 
 
 if __name__ == '__main__':
-
     module = importlib.import_module('bots.bot1')
 
     controller = GameController(module, module)
     controller.load_map_file('maps/map99.txt')
-    (min_x, max_x), (min_y, max_y) = (0, 25), (0, 25)  # controller.get_extents()
 
     controller.turn_step()
 
@@ -244,21 +281,7 @@ if __name__ == '__main__':
 
     ttk.Button(mainframe, text='Go!', command=None).grid(column=3, row=3)
 
-    width = 500
-    height = width * max_x / max_y
-    x_scale_factor = width / max_x
-    y_scale_factor = height / max_y
-    canvas = Canvas(mainframe, background='black', width=width, height=height)
-    canvas.grid(column=1, row=3, rowspan=3)
-
-    for planet in controller.game_state.get_planets():
-        x_pos, y_pos = planet.x_pos * x_scale_factor, planet.y_pos * y_scale_factor
-        size = (planet.ship_growth + 3) * 3.5
-        color = 'green' if planet.player == 1 else 'red' if planet.player == 2 else 'blue'
-        canvas.create_oval((x_pos, y_pos, x_pos + size, y_pos + size), fill=color)
-
-        text = canvas.create_text(x_pos + size / 2, y_pos + size / 2, fill='white', text=str(planet.ships),
-                                  justify='center', anchor='center')
+    game_canvas = GameCanvas(controller)
 
     for child in mainframe.winfo_children():
         child.grid_configure(padx=5, pady=5)
