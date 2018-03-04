@@ -198,13 +198,18 @@ def create_bot_frame(root_frame, bot_names):
     return bot_frame
 
 
+class GameView:
+    def __init__(self, controller: GameController):
+        pass
+
+
 if __name__ == '__main__':
 
     module = importlib.import_module('bots.bot1')
 
     controller = GameController(module, module)
-    controller.load_map_file('maps/map1.txt')
-    (min_x, max_x), (min_y, max_y) = controller.get_extents()
+    controller.load_map_file('maps/map99.txt')
+    (min_x, max_x), (min_y, max_y) = (0, 25), (0, 25)  # controller.get_extents()
 
     controller.turn_step()
 
@@ -238,6 +243,22 @@ if __name__ == '__main__':
     ttk.Label(mainframe, text='Maps').grid(column=3, row=1, sticky=S)
 
     ttk.Button(mainframe, text='Go!', command=None).grid(column=3, row=3)
+
+    width = 500
+    height = width * max_x / max_y
+    x_scale_factor = width / max_x
+    y_scale_factor = height / max_y
+    canvas = Canvas(mainframe, background='black', width=width, height=height)
+    canvas.grid(column=1, row=3, rowspan=3)
+
+    for planet in controller.game_state.get_planets():
+        x_pos, y_pos = planet.x_pos * x_scale_factor, planet.y_pos * y_scale_factor
+        size = (planet.ship_growth + 3) * 3.5
+        color = 'green' if planet.player == 1 else 'red' if planet.player == 2 else 'blue'
+        canvas.create_oval((x_pos, y_pos, x_pos + size, y_pos + size), fill=color)
+
+        text = canvas.create_text(x_pos + size / 2, y_pos + size / 2, fill='white', text=str(planet.ships),
+                                  justify='center', anchor='center')
 
     for child in mainframe.winfo_children():
         child.grid_configure(padx=5, pady=5)
