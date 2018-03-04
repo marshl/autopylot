@@ -1,3 +1,5 @@
+import copy
+import importlib
 import math
 import os
 from os import path
@@ -29,9 +31,24 @@ class Planet:
         self.ship_growth = ship_growth
 
 
+class FleetCommand:
+    def __init__(self, source_planet: int, destination_planet: int, ships: int):
+        self.source_planet = source_planet
+        self.destination_planet = destination_planet
+        self.ships = ships
+
+
 class GameController:
-    def __init__(self):
+    def __init__(self, bot_1, bot_2):
         self.game_state = GameState()
+        self.bot_1 = bot_1
+        self.bot_2 = bot_2
+
+    def copy_game_state(self, current_player: int):
+        state = copy.deepcopy(self.game_state)
+        state.current_player = current_player
+        state.enemy_player = 2 if current_player == 1 else 1
+        return state
 
     def load_map_file(self, map_file: str):
         planet_id = 1
@@ -53,6 +70,16 @@ class GameController:
         return (min_x, max_x), (min_y, max_y)
 
     def turn_step(self):
+
+        bot_1_commands = self.bot_1.get_commands(self.copy_game_state(1))
+        bot_2_commands = self.bot_2.get_commands(self.copy_game_state(2))
+
+        for command in bot_1_commands:
+            self.process_command(command, 1)
+
+        for command in bot_2_commands:
+            self.process_command(command, 2)
+
         for fleet in self.game_state.fleets:
             fleet.turns_remaining -= 1
             if fleet.turns_remaining <= 0:
@@ -91,10 +118,14 @@ class GameController:
         y_dist = source_planet.y_pos - destination_planet.y_pos
         return int(math.sqrt(x_dist ** 2 + y_dist ** 2))
 
-    def process_command(self, source_planet_id: int, target_planet_id: int, ships: int):
-        source_planet = self.game_state.get_planet_by_id(source_planet_id)
-        target_planet = self.game_state.get_planet_by_id(target_planet_id)
-        self.launch_fleet(source_planet, target_planet, ships)
+    def process_command(self, command: FleetCommand, player: int):
+        source_planet = self.game_state.get_planet_by_id(command.source_planet)
+        target_planet = self.game_state.get_planet_by_id(command.destination_planet)
+
+        if source_planet.player != player:
+            raise ValueError('Cannot launch planet from someone else\'s planet!')
+
+        self.launch_fleet(source_planet, target_planet, command.ships)
 
 
 class GameState:
@@ -102,17 +133,20 @@ class GameState:
         self.planets = list()
         self.fleets = list()
 
+        self.current_player = None
+        self.enemy_player = None
+
     def get_planet_by_id(self, planet_id: int):
-        return next((planet for planet in self.planets if planet.id == planet_id), None)
+        return next((planet for planet in self.planets if planet.planet_id == planet_id), None)
 
     def get_planets(self):
         return self.planets
 
     def get_my_planets(self):
-        return self.get_player_planets(1)
+        return self.get_player_planets(self.current_player)
 
     def get_enemy_planets(self):
-        return self.get_player_planets(2)
+        return self.get_player_planets(self.enemy_player)
 
     def get_neutral_planets(self):
         return self.get_player_planets(0)
@@ -127,10 +161,10 @@ class GameState:
         return self.fleets
 
     def get_my_fleets(self):
-        return self.get_player_fleets(1)
+        return self.get_player_fleets(self.current_player)
 
     def get_enemy_fleets(self):
-        return self.get_player_fleets(2)
+        return self.get_player_fleets(self.enemy_player)
 
     def get_player_fleets(self, player: int):
         if player not in [1, 2]:
@@ -165,9 +199,14 @@ def create_bot_frame(root_frame, bot_names):
 
 
 if __name__ == '__main__':
-    controller = GameController()
+
+    module = importlib.import_module('bots.bot1')
+
+    controller = GameController(module, module)
     controller.load_map_file('maps/map1.txt')
     (min_x, max_x), (min_y, max_y) = controller.get_extents()
+
+    controller.turn_step()
 
     root = Tk()
     root.title("autopylot")
