@@ -1,6 +1,9 @@
 import math
+import os
+from os import path
 
-import tkinter as tk
+from tkinter import *
+import tkinter.ttk as ttk
 
 
 class Fleet:
@@ -139,11 +142,65 @@ class GameState:
         return self.get_player_planets(player) or self.get_player_planets(player)
 
 
+def get_map_files(map_path: str):
+    return [file for file in os.listdir(map_path) if path.isfile(path.join(map_path, file))]
+
+
+def get_bot_files(bot_path: str):
+    return [file for file in os.listdir(bot_path) if path.isfile(path.join(bot_path, file))]
+
+
+def create_bot_frame(root_frame, bot_names):
+    bot_frame = ttk.Frame(root_frame)
+
+    scrollbar = ttk.Scrollbar(bot_frame, orient=VERTICAL)
+    bots_left_listbox = Listbox(bot_frame, height=10, listvariable=bot_names, exportselection=0,
+                                yscrollcommand=scrollbar.set)
+
+    scrollbar.config(command=bots_left_listbox.yview)
+    scrollbar.pack(side=RIGHT, fill=Y)
+    bots_left_listbox.pack(side=RIGHT, fill=Y)
+
+    return bot_frame
+
+
 if __name__ == '__main__':
     controller = GameController()
     controller.load_map_file('maps/map1.txt')
     (min_x, max_x), (min_y, max_y) = controller.get_extents()
 
-    root = tk.Tk()
-    tk.Button(root, text='Hello, world!').grid()
+    root = Tk()
+    root.title("autopylot")
+
+    mainframe = ttk.Frame(root)
+    mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
+    mainframe.columnconfigure(0, weight=1)
+    mainframe.rowconfigure(0, weight=1)
+
+    maps_frame = ttk.Frame(mainframe)
+    maps_frame.grid(column=3, row=2)
+
+    bot_names = StringVar(value=get_bot_files('bots'))
+    left_bot_frame = create_bot_frame(mainframe, bot_names)
+    left_bot_frame.grid(column=1, row=2)
+    ttk.Label(mainframe, text='Player 1').grid(column=1, row=1, sticky=S)
+
+    right_bot_frame = create_bot_frame(mainframe, bot_names)
+    right_bot_frame.grid(column=2, row=2)
+    ttk.Label(mainframe, text='Player 2').grid(column=2, row=1, sticky=S)
+
+    map_names = StringVar(value=get_map_files('maps'))
+    scrollbar = ttk.Scrollbar(maps_frame, orient=VERTICAL)
+    maps_listbox = Listbox(maps_frame, height=10, listvariable=map_names, exportselection=0,
+                           yscrollcommand=scrollbar.set)
+    scrollbar.config(command=maps_listbox.yview)
+    scrollbar.pack(side=RIGHT, fill=Y)
+    maps_listbox.pack(side=RIGHT, fill=Y)
+    ttk.Label(mainframe, text='Maps').grid(column=3, row=1, sticky=S)
+
+    ttk.Button(mainframe, text='Go!', command=None).grid(column=3, row=3)
+
+    for child in mainframe.winfo_children():
+        child.grid_configure(padx=5, pady=5)
+
     root.mainloop()
