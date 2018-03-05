@@ -3,15 +3,16 @@ import importlib
 import math
 import os
 from os import path
+import random
 
 from tkinter import *
 import tkinter.ttk as ttk
 
 
 class Fleet:
-    def __init__(self, ships: int, player: int, source_planet: int, destination_planet: int, total_trip_length: int):
+    def __init__(self, ships: int, player_id: int, source_planet: int, destination_planet: int, total_trip_length: int):
         self.ships = ships
-        self.player = player
+        self.player_id = player_id
         self.source_planet = source_planet
         self.destination_planet = destination_planet
 
@@ -19,14 +20,14 @@ class Fleet:
         self.turns_remaining = total_trip_length
 
     def get_turns_travelled(self):
-        return self.turns_remaining - self.total_trip_length
+        return self.total_trip_length - self.turns_remaining
 
 
 class Planet:
-    def __init__(self, planet_id: int, x_pos: float, y_pos: float, player: int, ships: int, ship_growth: int):
+    def __init__(self, planet_id: int, x_pos: float, y_pos: float, player_id: int, ships: int, ship_growth: int):
         self.planet_id = planet_id
         self.x_pos, self.y_pos = x_pos, y_pos
-        self.player = player
+        self.player_id = player_id
         self.ships = ships
         self.ship_growth = ship_growth
 
@@ -54,10 +55,10 @@ class GameController:
         planet_id = 1
         with open(map_file, 'r') as f:
             for line in f:
-                affix, x_pos, y_pos, player, ships, ship_growth = line.split(' ')
+                affix, x_pos, y_pos, player_id, ships, ship_growth = line.split(' ')
                 x_pos, y_pos = float(x_pos), float(y_pos)
-                player, ships, ship_growth = int(player), int(ships), int(ship_growth)
-                planet = Planet(planet_id, x_pos, y_pos, player, ships, ship_growth)
+                player_id, ships, ship_growth = int(player_id), int(ships), int(ship_growth)
+                planet = Planet(planet_id, x_pos, y_pos, player_id, ships, ship_growth)
                 self.game_state.planets.append(planet)
                 planet_id += 1
 
@@ -86,18 +87,18 @@ class GameController:
                 self.land_fleet(fleet)
 
         for planet in self.game_state.planets:
-            if planet.player != 0:
+            if planet.player_id != 0:
                 planet.ships += planet.ship_growth
 
     def land_fleet(self, fleet: Fleet):
-        planet = self.game_state.get_planet_by_id(fleet.destination_planet)
-        if fleet.player == planet.player:
+        planet = self.game_state.get_planet(fleet.destination_planet)
+        if fleet.player_id == planet.player_id:
             planet.ships += fleet.ships
         else:
             planet.ships -= fleet.ships
             if planet.ships < 0:
                 planet.ships *= -1
-                planet.player = planet
+                planet.player_id = fleet.player_id
 
         self.game_state.fleets.remove(fleet)
 
@@ -108,9 +109,13 @@ class GameController:
         if source_planet.ships - ships <= 0:
             raise ValueError('Cannot launch more ships than are on a planet')
 
+        print(f'Launching fleet of {ships} ships from {source_planet.planet_id} to {destination_planet.planet_id}')
+
         source_planet.ships -= ships
         distance = self.get_trip_length(source_planet, destination_planet)
-        fleet = Fleet(ships, source_planet.player, source_planet.planet_id, destination_planet.planet_id, distance)
+        fleet = Fleet(ships, source_planet.player_id, source_planet.planet_id, destination_planet.planet_id, distance)
+        fleet.fleet_id = self.game_state.next_fleet_id
+        self.game_state.next_fleet_id += 1
         self.game_state.fleets.append(fleet)
 
     def get_trip_length(self, source_planet: Planet, destination_planet: Planet):
@@ -118,14 +123,35 @@ class GameController:
         y_dist = source_planet.y_pos - destination_planet.y_pos
         return int(math.sqrt(x_dist ** 2 + y_dist ** 2))
 
-    def process_command(self, command: FleetCommand, player: int):
-        source_planet = self.game_state.get_planet_by_id(command.source_planet)
-        target_planet = self.game_state.get_planet_by_id(command.destination_planet)
+    def process_command(self, command: FleetCommand, player_id: int):
+        source_planet = self.game_state.get_planet(command.source_planet)
+        destination_planet = self.game_state.get_planet(command.destination_planet)
 
-        if source_planet.player != player:
-            raise ValueError('Cannot launch planet from someone else\'s planet!')
+        if command.ships <= 0:
+            print('Can only launch a positive number of ships')
+            return
 
-        self.launch_fleet(source_planet, target_planet, command.ships)
+        if not source_planet:
+            print('Unknown source planet')
+            return
+
+        if command.ships >= source_planet.ships:
+            print('Cannot launch more ships than are on the planet')
+            return
+
+        if not destination_planet:
+            print('Unknown destination planet')
+            return
+
+        if source_planet.player_id != player_id:
+            print('Cannot launch planet from someone else\'s planet!')
+            return
+
+        if source_planet == destination_planet:
+            print('Cannot send a fleet to its own planet')
+            return
+
+        self.launch_fleet(source_planet, destination_planet, command.ships)
 
 
 class GameState:
@@ -136,7 +162,9 @@ class GameState:
         self.current_player = None
         self.enemy_player = None
 
-    def get_planet_by_id(self, planet_id: int):
+        self.next_fleet_id = 1
+
+    def get_planet(self, planet_id: int):
         return next((planet for planet in self.planets if planet.planet_id == planet_id), None)
 
     def get_planets(self):
@@ -151,11 +179,14 @@ class GameState:
     def get_neutral_planets(self):
         return self.get_player_planets(0)
 
-    def get_player_planets(self, player: int):
-        if player not in [0, 1, 2]:
+    def get_player_planets(self, player_id: int):
+        if player_id not in [0, 1, 2]:
             raise ValueError('Cannot get planets for players other than 0,1,2')
 
-        return [planet for planet in self.planets if planet.player == player]
+        return [planet for planet in self.planets if planet.player_id == player_id]
+
+    def get_fleet(self, fleet_id):
+        return next((fleet for fleet in self.fleets if fleet.fleet_id == fleet_id), None)
 
     def get_fleets(self):
         return self.fleets
@@ -166,14 +197,14 @@ class GameState:
     def get_enemy_fleets(self):
         return self.get_player_fleets(self.enemy_player)
 
-    def get_player_fleets(self, player: int):
-        if player not in [1, 2]:
+    def get_player_fleets(self, player_id: int):
+        if player_id not in [1, 2]:
             raise ValueError('Can only get fleets for players 1 and 2')
 
-        return [fleet for fleet in self.fleets if fleet.player == player]
+        return [fleet for fleet in self.fleets if fleet.player_id == player_id]
 
-    def get_player_is_alive(self, player: int):
-        return self.get_player_planets(player) or self.get_player_planets(player)
+    def get_player_is_alive(self, player_id: int):
+        return self.get_player_planets(player_id) or self.get_player_planets(player_id)
 
 
 def get_map_files(map_path: str):
@@ -214,6 +245,7 @@ class SimulationFrame(Frame):
 
         self.planet_shapes = {}
         self.planet_labels = {}
+        self.fleets = {}
 
     def initialise(self, controller: GameController):
         self.controller = controller
@@ -222,30 +254,70 @@ class SimulationFrame(Frame):
         self.planet_labels = {}
 
         for planet in controller.game_state.get_planets():
-            x_pos, y_pos = planet.x_pos * self.x_scale_factor, planet.y_pos * self.y_scale_factor
+            x_pos, y_pos = self.map_to_canvas_coord(planet.x_pos, planet.y_pos)
             size = (planet.ship_growth + 3) * 3.5
             shape = self.simulation_canvas.create_oval((x_pos, y_pos, x_pos + size, y_pos + size))
             self.planet_shapes[planet.planet_id] = shape
 
-            label = self.simulation_canvas.create_text(x_pos + size / 2, y_pos + size / 2, fill='white', anchor='center')
+            label = self.simulation_canvas.create_text(x_pos + size / 2, y_pos + size / 2, fill='white',
+                                                       anchor='center')
             self.planet_labels[planet.planet_id] = label
 
-    def get_player_color(self, player: int):
-        return 'green' if player == 1 else 'red' if player == 2 else 'blue'
+    def get_player_color(self, player_id: int):
+        return {0: 'blue', 1: 'red', 2: 'green'}[player_id]
 
     def callback(self):
         pass
 
+    def map_to_canvas_coord(self, x_pos, y_pos):
+        return self.x_scale_factor * x_pos, self.y_scale_factor * y_pos
+
+    def get_fleet_position(self, fleet: Fleet):
+
+        source_planet = self.controller.game_state.get_planet(fleet.source_planet)
+        destination_planet = self.controller.game_state.get_planet(fleet.destination_planet)
+
+        start_x, start_y = self.map_to_canvas_coord(source_planet.x_pos, source_planet.y_pos)
+        end_x, end_y = self.map_to_canvas_coord(destination_planet.x_pos, destination_planet.y_pos)
+
+        travel_delta = fleet.get_turns_travelled() / fleet.total_trip_length
+
+        return start_x + (end_x - start_x) * travel_delta, start_y + (end_y - start_y) * travel_delta
+
     def update_canvas(self):
 
+        self.controller.turn_step()
+
         for planet_id, oval_id in self.planet_shapes.items():
-            planet = self.controller.game_state.get_planet_by_id(planet_id)
-            color = self.get_player_color(planet.player)
+            planet = self.controller.game_state.get_planet(planet_id)
+            color = self.get_player_color(planet.player_id)
             self.simulation_canvas.itemconfig(oval_id, fill=color)
 
         for planet_id, label_id in self.planet_labels.items():
-            planet = self.controller.game_state.get_planet_by_id(planet_id)
+            planet = self.controller.game_state.get_planet(planet_id)
             self.simulation_canvas.itemconfig(label_id, text=str(planet.ships))
+
+        # Remove fleets that have landed
+        for fleet_id in list(self.fleets.keys()):
+            if not self.controller.game_state.get_fleet(fleet_id):
+                label_id = self.fleets[fleet_id]
+                self.simulation_canvas.delete(label_id)
+                del self.fleets[fleet_id]
+
+        # Add fleets that have launched
+        for fleet in self.controller.game_state.get_fleets():
+            if fleet.fleet_id not in self.fleets:
+                label_id = self.simulation_canvas.create_text(0, 0, fill='white', anchor='center',
+                                                              text=str(fleet.ships))
+                self.fleets[fleet.fleet_id] = label_id
+
+        # Update position of all fleets
+        for fleet_id, label_id in self.fleets.items():
+            fleet = self.controller.game_state.get_fleet(fleet_id)
+            x_pos, y_pos = self.get_fleet_position(fleet)
+            self.simulation_canvas.coords(label_id, x_pos, y_pos)
+
+        self.after(int(1000 / 12), self.update_canvas)
 
 
 if __name__ == '__main__':
