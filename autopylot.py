@@ -75,11 +75,13 @@ class GameController:
         bot_1_commands = self.bot_1.get_commands(self.copy_game_state(1))
         bot_2_commands = self.bot_2.get_commands(self.copy_game_state(2))
 
-        for command in bot_1_commands:
-            self.process_command(command, 1)
+        if bot_1_commands:
+            for command in bot_1_commands:
+                self.process_command(command, 1)
 
-        for command in bot_2_commands:
-            self.process_command(command, 2)
+        if bot_2_commands:
+            for command in bot_2_commands:
+                self.process_command(command, 2)
 
         for fleet in self.game_state.fleets:
             fleet.turns_remaining -= 1
@@ -203,8 +205,38 @@ class GameState:
 
         return [fleet for fleet in self.fleets if fleet.player_id == player_id]
 
-    def get_player_is_alive(self, player_id: int):
+    def is_player_alive(self, player_id: int):
         return self.get_player_planets(player_id) or self.get_player_planets(player_id)
+
+    def get_total_ship_count(self, player_id: int):
+        planet_ships = sum([planet.ships for planet in self.get_player_planets(player_id)])
+        fleet_ships = sum([fleet.ships for fleet in self.get_player_fleets(player_id)])
+        return planet_ships + fleet_ships
+
+    def get_winning_player(self):
+        player_1_ships = self.get_total_ship_count(1)
+        player_2_ships = self.get_total_ship_count(2)
+
+        if player_1_ships > player_2_ships:
+            return 1
+        elif player_2_ships > player_1_ships:
+            return 2
+        else:
+            return 0
+
+    def get_lost_player(self):
+        if self.get_total_ship_count(1) == 0:
+            return 1
+        elif self.get_total_ship_count(2) == 0:
+            return 2
+        else:
+            return 0
+
+    def get_my_planet_count(self):
+        return len(self.get_my_planets())
+
+    def get_enemy_planet_count(self):
+        return len(self.get_enemy_planets())
 
 
 def get_map_files(map_path: str):
