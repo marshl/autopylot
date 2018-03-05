@@ -198,48 +198,54 @@ def create_bot_frame(root_frame, bot_names):
     return bot_frame
 
 
-class GameCanvas:
-    def __init__(self, controller: GameController):
-
+class SimulationFrame(Frame):
+    def __init__(self, master=None, *args, **kwargs):
+        Frame.__init__(self, master, *args, **kwargs)
         self.max_x = self.max_y = 25
-        self.width = 512
-        self.height = self.width * self.max_x / self.max_y
-        self.controller = controller
+        self.canvas_width = 512
+        self.canvas_height = self.canvas_width * self.max_x / self.max_y
 
-        self.x_scale_factor = self.width / self.max_x
-        self.y_scale_factor = self.height / self.max_y
-        self.canvas = Canvas(mainframe, background='black', width=self.width, height=self.height)
-        self.canvas.grid(column=1, row=3, rowspan=3)
+        self.x_scale_factor = self.canvas_width / self.max_x
+        self.y_scale_factor = self.canvas_height / self.max_y
+
+        self.controller = None
+        self.simulation_canvas = Canvas(self, background='black', width=self.canvas_width, height=self.canvas_height)
+        self.simulation_canvas.pack()
 
         self.planet_shapes = {}
         self.planet_labels = {}
 
-        self.initialise_canvas()
-        self.update_canvas()
+    def initialise(self, controller: GameController):
+        self.controller = controller
+
+        self.planet_shapes = {}
+        self.planet_labels = {}
+
+        for planet in controller.game_state.get_planets():
+            x_pos, y_pos = planet.x_pos * self.x_scale_factor, planet.y_pos * self.y_scale_factor
+            size = (planet.ship_growth + 3) * 3.5
+            shape = self.simulation_canvas.create_oval((x_pos, y_pos, x_pos + size, y_pos + size))
+            self.planet_shapes[planet.planet_id] = shape
+
+            label = self.simulation_canvas.create_text(x_pos + size / 2, y_pos + size / 2, fill='white', anchor='center')
+            self.planet_labels[planet.planet_id] = label
 
     def get_player_color(self, player: int):
         return 'green' if player == 1 else 'red' if player == 2 else 'blue'
 
-    def initialise_canvas(self):
-        for planet in controller.game_state.get_planets():
-            x_pos, y_pos = planet.x_pos * self.x_scale_factor, planet.y_pos * self.y_scale_factor
-            size = (planet.ship_growth + 3) * 3.5
-            shape = self.canvas.create_oval((x_pos, y_pos, x_pos + size, y_pos + size))
-            self.planet_shapes[planet.planet_id] = shape
-
-            label = self.canvas.create_text(x_pos + size / 2, y_pos + size / 2, fill='white', anchor='center')
-            self.planet_labels[planet.planet_id] = label
+    def callback(self):
+        pass
 
     def update_canvas(self):
 
         for planet_id, oval_id in self.planet_shapes.items():
             planet = self.controller.game_state.get_planet_by_id(planet_id)
             color = self.get_player_color(planet.player)
-            self.canvas.itemconfig(oval_id, fill=color)
+            self.simulation_canvas.itemconfig(oval_id, fill=color)
 
         for planet_id, label_id in self.planet_labels.items():
             planet = self.controller.game_state.get_planet_by_id(planet_id)
-            self.canvas.itemconfig(label_id, text=str(planet.ships))
+            self.simulation_canvas.itemconfig(label_id, text=str(planet.ships))
 
 
 if __name__ == '__main__':
@@ -281,7 +287,10 @@ if __name__ == '__main__':
 
     ttk.Button(mainframe, text='Go!', command=None).grid(column=3, row=3)
 
-    game_canvas = GameCanvas(controller)
+    game_frame = SimulationFrame(mainframe)
+    game_frame.grid(column=1, row=4, columnspan=3)
+    game_frame.initialise(controller)
+    game_frame.update_canvas()
 
     for child in mainframe.winfo_children():
         child.grid_configure(padx=5, pady=5)
