@@ -1,4 +1,4 @@
-from autopylot import GameState, FleetCommand
+from game_state import GameState, FleetCommand
 import random
 
 
