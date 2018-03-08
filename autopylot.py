@@ -20,14 +20,14 @@ def create_bot_frame(root_frame, bot_names):
     bot_frame = ttk.Frame(root_frame)
 
     scrollbar = ttk.Scrollbar(bot_frame, orient=VERTICAL)
-    bots_left_listbox = Listbox(bot_frame, height=10, listvariable=bot_names, exportselection=0,
-                                yscrollcommand=scrollbar.set)
+    bots_listbox = Listbox(bot_frame, height=10, listvariable=bot_names, exportselection=0,
+                           yscrollcommand=scrollbar.set)
 
-    scrollbar.config(command=bots_left_listbox.yview)
+    scrollbar.config(command=bots_listbox.yview)
     scrollbar.pack(side=RIGHT, fill=Y)
-    bots_left_listbox.pack(side=RIGHT, fill=Y)
+    bots_listbox.pack(side=RIGHT, fill=Y)
 
-    return bot_frame
+    return bot_frame, bots_listbox
 
 
 class SimulationFrame(Frame):
@@ -121,13 +121,31 @@ class SimulationFrame(Frame):
         self.after(int(1000 / 12), self.update_canvas)
 
 
-if __name__ == '__main__':
-    module = importlib.import_module('bots.bot1')
+def start_game():
+    bot_1_index = left_bot_listbox.curselection()
+    bot_2_index = right_bot_listbox.curselection()
 
-    controller = GameController(module, module)
+    if not bot_1_index or not bot_2_index:
+        return
+
+    bot_1 = bots[bot_1_index[0]]
+    bot_2 = bots[bot_2_index[0]]
+
+    controller.start_game(bot_1, bot_2)
+
     controller.load_map_file('maps/map99.txt')
+    game_frame.initialise(controller)
+    game_frame.update_canvas()
 
-    controller.turn_step()
+
+def load_bots():
+    files = [file for file in os.listdir('bots') if path.isfile(path.join('bots', file))]
+    bots = [Bot(file) for file in files]
+    return bots
+
+
+if __name__ == '__main__':
+    controller = GameController()
 
     root = Tk()
     root.title("autopylot")
@@ -140,12 +158,14 @@ if __name__ == '__main__':
     maps_frame = ttk.Frame(mainframe)
     maps_frame.grid(column=3, row=2)
 
-    bot_names = StringVar(value=get_bot_files('bots'))
-    left_bot_frame = create_bot_frame(mainframe, bot_names)
+    bots = load_bots()
+
+    bot_name_list = StringVar(value=[bot.name for bot in bots])
+    left_bot_frame, left_bot_listbox = create_bot_frame(mainframe, bot_name_list)
     left_bot_frame.grid(column=1, row=2)
     ttk.Label(mainframe, text='Player 1').grid(column=1, row=1, sticky=S)
 
-    right_bot_frame = create_bot_frame(mainframe, bot_names)
+    right_bot_frame, right_bot_listbox = create_bot_frame(mainframe, bot_name_list)
     right_bot_frame.grid(column=2, row=2)
     ttk.Label(mainframe, text='Player 2').grid(column=2, row=1, sticky=S)
 
@@ -158,12 +178,10 @@ if __name__ == '__main__':
     maps_listbox.pack(side=RIGHT, fill=Y)
     ttk.Label(mainframe, text='Maps').grid(column=3, row=1, sticky=S)
 
-    ttk.Button(mainframe, text='Go!', command=None).grid(column=3, row=3)
+    ttk.Button(mainframe, text='Go!', command=start_game).grid(column=3, row=3)
 
     game_frame = SimulationFrame(mainframe)
     game_frame.grid(column=1, row=4, columnspan=3)
-    game_frame.initialise(controller)
-    game_frame.update_canvas()
 
     for child in mainframe.winfo_children():
         child.grid_configure(padx=5, pady=5)

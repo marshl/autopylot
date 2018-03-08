@@ -1,5 +1,29 @@
 import copy
+import importlib
 import math
+
+
+class Bot:
+    def __init__(self, filename: str):
+        self.player_id = None
+        self.filename = filename
+        self.name = self.module_name = self.filename.replace('.py', '')
+        self.module = None
+
+    def __str__(self):
+        return f'Bot:{self.name}'
+
+    def reload_module(self):
+        if not self.module:
+            self.module = importlib.import_module('bots.' + self.module_name)
+        else:
+            self.module = importlib.reload(self.module)
+
+    def get_module(self):
+        if not self.module:
+            self.reload_module()
+
+        return self.module
 
 
 class Fleet:
@@ -11,6 +35,9 @@ class Fleet:
 
         self.total_trip_length = total_trip_length
         self.turns_remaining = total_trip_length
+
+    def __str__(self):
+        return f'Fleet:{self.fleet_id}'
 
     def get_turns_travelled(self):
         return self.total_trip_length - self.turns_remaining
@@ -24,6 +51,9 @@ class Planet:
         self.ships = ships
         self.ship_growth = ship_growth
 
+    def __str__(self):
+        return f'Planet:{self.planet_id}'
+
 
 class FleetCommand:
     def __init__(self, source_planet: int, destination_planet: int, ships: int):
@@ -33,10 +63,18 @@ class FleetCommand:
 
 
 class GameController:
-    def __init__(self, bot_1, bot_2):
-        self.game_state = GameState()
+    def __init__(self):
+        self.bot_1 = self.bot_2 = None
+        self.turn_count = 0
+        self.game_state = None
+
+    def start_game(self, bot_1: Bot, bot_2: Bot):
         self.bot_1 = bot_1
+        self.bot_1.player_id = 1
         self.bot_2 = bot_2
+        self.bot_2.player_id = 2
+        self.game_state = GameState()
+        self.turn_count = 0
 
     def copy_game_state(self, current_player: int):
         state = copy.deepcopy(self.game_state)
@@ -65,16 +103,18 @@ class GameController:
 
     def turn_step(self):
 
-        bot_1_commands = self.bot_1.get_commands(self.copy_game_state(1))
-        bot_2_commands = self.bot_2.get_commands(self.copy_game_state(2))
+        self.turn_count += 1
+
+        bot_1_commands = self.bot_1.get_module().get_commands(self.copy_game_state(1))
+        bot_2_commands = self.bot_2.get_module().get_commands(self.copy_game_state(2))
 
         if bot_1_commands:
             for command in bot_1_commands:
-                self.process_command(command, 1)
+                self.process_command(command, self.bot_1)
 
         if bot_2_commands:
             for command in bot_2_commands:
-                self.process_command(command, 2)
+                self.process_command(command, self.bot_2)
 
         for fleet in self.game_state.fleets:
             fleet.turns_remaining -= 1
@@ -97,14 +137,13 @@ class GameController:
                 planet.ships *= -1
                 planet.player_id = fleet.player_id
 
-    def launch_fleet(self, source_planet: Planet, destination_planet: Planet, ships: int):
+    def launch_fleet(self, bot: Bot, source_planet: Planet, destination_planet: Planet, ships: int):
         if ships <= 0:
             raise ValueError('Can only launch a positive number of ships')
 
         if source_planet.ships - ships <= 0:
-            raise ValueError('Cannot launch more ships than are on a planet')
-
-        print(f'Launching fleet of {ships} ships from {source_planet.planet_id} to {destination_planet.planet_id}')
+            raise ValueError(
+                f'{bot} tried to launch {ships} ships from {source_planet} (has only {source_planet.ships} ships)')
 
         source_planet.ships -= ships
         distance = self.get_trip_length(source_planet, destination_planet)
@@ -118,35 +157,37 @@ class GameController:
         y_dist = source_planet.y_pos - destination_planet.y_pos
         return int(math.sqrt(x_dist ** 2 + y_dist ** 2))
 
-    def process_command(self, command: FleetCommand, player_id: int):
+    def process_command(self, command: FleetCommand, bot: Bot):
         source_planet = self.game_state.get_planet(command.source_planet)
         destination_planet = self.game_state.get_planet(command.destination_planet)
 
-        if command.ships <= 0:
-            print('Can only launch a positive number of ships')
+        if not source_planet:
+            print(f'{bot} tried to launch {ships} ships from unknown planet {command.source_planet}')
             return
 
-        if not source_planet:
-            print('Unknown source planet')
+        if command.ships <= 0:
+            print(f'{bot} tried to launch {command.ships} ships from {source_planet}')
             return
 
         if command.ships >= source_planet.ships:
-            print('Cannot launch more ships than are on the planet')
+            print(f'{bot} tried to launch too may ships {command.ships} from {source_planet} '
+                  f'(it has only {source_planet.ships} ships)')
             return
 
         if not destination_planet:
-            print('Unknown destination planet')
+            print(f'{bot} tried to launch {command.ships} from {source_planet} '
+                  f'to an unknown planet {command.destination_planet}')
             return
 
-        if source_planet.player_id != player_id:
-            print('Cannot launch planet from someone else\'s planet!')
+        if source_planet.player_id != bot.player_id:
+            print(f'{bot} tried to launch {command.ships} ships from planet {source_planet} which it doesn\'t own')
             return
 
         if source_planet == destination_planet:
-            print('Cannot send a fleet to its own planet')
+            print(f'{bot} tried to send {command.ships} ships to/from {source_planet}')
             return
 
-        self.launch_fleet(source_planet, destination_planet, command.ships)
+        self.launch_fleet(bot, source_planet, destination_planet, command.ships)
 
 
 class GameState:
