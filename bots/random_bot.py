@@ -7,9 +7,12 @@ def get_commands(game_state: GameState):
         return []
 
     home_planet = random.choice(game_state.get_my_planets())
-    enemy_planet = random.choice(game_state.get_planets())
+    target_planet = random.choice(game_state.get_planets())
+
+    if home_planet == target_planet:
+        return []
 
     if home_planet.ships > 1:
-        return [FleetCommand(home_planet.planet_id, enemy_planet.planet_id, random.randrange(1, home_planet.ships))]
+        return [FleetCommand(home_planet.planet_id, target_planet.planet_id, random.randrange(1, home_planet.ships))]
 
     return []
