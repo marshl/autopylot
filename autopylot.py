@@ -8,31 +8,9 @@ import tkinter.ttk as ttk
 from game_state import *
 
 
-def get_map_files(map_path: str):
-    return [file for file in os.listdir(map_path) if path.isfile(path.join(map_path, file))]
-
-
-def get_bot_files(bot_path: str):
-    return [file for file in os.listdir(bot_path) if path.isfile(path.join(bot_path, file))]
-
-
-def create_bot_frame(root_frame, bot_names):
-    bot_frame = ttk.Frame(root_frame)
-
-    scrollbar = ttk.Scrollbar(bot_frame, orient=VERTICAL)
-    bots_listbox = Listbox(bot_frame, height=10, listvariable=bot_names, exportselection=0,
-                           yscrollcommand=scrollbar.set)
-
-    scrollbar.config(command=bots_listbox.yview)
-    scrollbar.pack(side=RIGHT, fill=Y)
-    bots_listbox.pack(side=RIGHT, fill=Y)
-
-    return bot_frame, bots_listbox
-
-
-class SimulationFrame(Frame):
+class SimulationCanvas(Frame):
     def __init__(self, master=None, *args, **kwargs):
-        Frame.__init__(self, master, *args, **kwargs)
+        Frame.__init__(self, master)
         self.max_x = self.max_y = 25
         self.canvas_width = 512
         self.canvas_height = self.canvas_width * self.max_x / self.max_y
@@ -119,75 +97,138 @@ class SimulationFrame(Frame):
             x_pos, y_pos = self.get_fleet_position(fleet)
             self.simulation_canvas.coords(label_id, x_pos, y_pos)
 
-        self.after(int(1000 / 12), self.update_canvas)
 
+class AutopylotFrame(Frame):
+    def __init__(self, master=None):
+        Frame.__init__(self, master)
+        self.map_files = self.get_map_files('maps')
+        self.bot_files = self.get_bot_files('bots')
+        self.bots = self.load_bots()
 
-def start_game():
-    bot_1_index = left_bot_listbox.curselection()
-    bot_2_index = right_bot_listbox.curselection()
-    map_index = map_listbox.curselection()
+        self.controller = GameController()
+        self.is_game_running = False
 
-    if not bot_1_index or not bot_2_index or not map_index:
-        return
+        self.main_frame = ttk.Frame(self)
+        self.main_frame.grid(column=0, row=0, sticky=(N, W, E, S))
+        self.main_frame.columnconfigure(0, weight=1)
+        self.main_frame.rowconfigure(0, weight=1)
 
-    bot_1 = bots[bot_1_index[0]]
-    bot_2 = bots[bot_2_index[0]]
-    map_name = map_names[map_index[0]]
+        maps_frame = ttk.Frame(self.main_frame)
+        maps_frame.grid(column=3, row=2)
 
-    controller.start_game(bot_1, bot_2)
+        bot_name_list = StringVar(value=[bot.name for bot in self.bots])
+        self.left_bot_frame, self.left_bot_listbox = self.create_bot_frame(self.main_frame, bot_name_list)
+        self.left_bot_frame.grid(column=1, row=2)
+        ttk.Label(self.main_frame, text='Player 1').grid(column=1, row=1, sticky=S)
 
-    controller.load_map_file('maps/' + map_name)
-    game_frame.initialise(controller)
-    game_frame.update_canvas()
+        self.right_bot_frame, self.right_bot_listbox = self.create_bot_frame(self.main_frame, bot_name_list)
+        self.right_bot_frame.grid(column=2, row=2)
+        ttk.Label(self.main_frame, text='Player 2').grid(column=2, row=1, sticky=S)
 
+        map_vars = StringVar(value=self.map_files)
+        scrollbar = ttk.Scrollbar(maps_frame, orient=VERTICAL)
+        self.map_listbox = Listbox(maps_frame, height=10, listvariable=map_vars, exportselection=0,
+                                   yscrollcommand=scrollbar.set)
+        scrollbar.config(command=self.map_listbox.yview)
+        scrollbar.pack(side=RIGHT, fill=Y)
+        self.map_listbox.pack(side=RIGHT, fill=Y)
+        ttk.Label(self.main_frame, text='Maps').grid(column=3, row=1, sticky=S)
 
-def load_bots():
-    files = [file for file in os.listdir('bots') if path.isfile(path.join('bots', file))]
-    bots = [Bot(file) for file in files]
-    return bots
+        self.start_button = ttk.Button(self.main_frame, text='Start', command=self.start_game)
+        self.start_button.grid(column=1, row=3)
+        self.resume_button = ttk.Button(self.main_frame, text='Resume', command=self.resume_game)
+        self.resume_button.grid(column=2, row=3)
+        self.resume_button.config(state=DISABLED)
+        self.stop_button = ttk.Button(self.main_frame, text='Stop', command=self.stop_game)
+        self.stop_button.grid(column=3, row=3)
+        self.stop_button.config(state=DISABLED)
+
+        self.game_frame = SimulationCanvas(self.main_frame)
+        self.game_frame.grid(column=1, row=4, columnspan=3)
+
+        for child in self.main_frame.winfo_children():
+            child.grid_configure(padx=5, pady=5)
+
+    def get_map_files(self, map_path: str):
+        return [file for file in os.listdir(map_path) if path.isfile(path.join(map_path, file))]
+
+    def get_bot_files(self, bot_path: str):
+        return [file for file in os.listdir(bot_path) if path.isfile(path.join(bot_path, file))]
+
+    def load_bots(self):
+        files = [file for file in os.listdir('bots') if path.isfile(path.join('bots', file))]
+        bots = [Bot(file) for file in files]
+        return bots
+
+    def create_bot_frame(self, parent_frame: Frame, bot_names):
+        bot_frame = ttk.Frame(parent_frame)
+
+        scrollbar = ttk.Scrollbar(bot_frame, orient=VERTICAL)
+        bots_listbox = Listbox(bot_frame, height=10, listvariable=bot_names, exportselection=0,
+                               yscrollcommand=scrollbar.set)
+
+        scrollbar.config(command=bots_listbox.yview)
+        scrollbar.pack(side=RIGHT, fill=Y)
+        bots_listbox.pack(side=RIGHT, fill=Y)
+
+        return bot_frame, bots_listbox
+
+    def start_game(self):
+        if self.is_game_running:
+            return
+
+        bot_1_index = self.left_bot_listbox.curselection()
+        bot_2_index = self.right_bot_listbox.curselection()
+        map_index = self.map_listbox.curselection()
+
+        if not bot_1_index or not bot_2_index or not map_index:
+            return
+
+        bot_1 = self.bots[bot_1_index[0]]
+        bot_2 = self.bots[bot_2_index[0]]
+        map_name = self.map_files[map_index[0]]
+
+        self.controller.start_game(bot_1, bot_2)
+
+        self.controller.load_map_file('maps/' + map_name)
+        self.game_frame.initialise(self.controller)
+
+        self.stop_button.config(state=NORMAL)
+        self.start_button.config(state=DISABLED)
+        self.resume_button.config(state=DISABLED)
+        self.is_game_running = True
+
+        self.update_game()
+
+    def stop_game(self):
+        self.stop_button.config(state=DISABLED)
+        self.resume_button.config(state=NORMAL)
+        self.start_button.config(state=NORMAL)
+        self.is_game_running = False
+
+    def resume_game(self):
+        if self.is_game_running:
+            return
+
+        self.stop_button.config(state=NORMAL)
+        self.resume_button.config(state=DISABLED)
+        self.start_button.config(state=DISABLED)
+
+        self.is_game_running = True
+        self.update_game()
+
+    def update_game(self):
+
+        if not self.is_game_running:
+            return
+
+        self.game_frame.update_canvas()
+        self.after(int(1000 / 12), self.update_game)
 
 
 if __name__ == '__main__':
-    controller = GameController()
-
     root = Tk()
-    root.title("autopylot")
-
-    mainframe = ttk.Frame(root)
-    mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
-    mainframe.columnconfigure(0, weight=1)
-    mainframe.rowconfigure(0, weight=1)
-
-    maps_frame = ttk.Frame(mainframe)
-    maps_frame.grid(column=3, row=2)
-
-    bots = load_bots()
-
-    bot_name_list = StringVar(value=[bot.name for bot in bots])
-    left_bot_frame, left_bot_listbox = create_bot_frame(mainframe, bot_name_list)
-    left_bot_frame.grid(column=1, row=2)
-    ttk.Label(mainframe, text='Player 1').grid(column=1, row=1, sticky=S)
-
-    right_bot_frame, right_bot_listbox = create_bot_frame(mainframe, bot_name_list)
-    right_bot_frame.grid(column=2, row=2)
-    ttk.Label(mainframe, text='Player 2').grid(column=2, row=1, sticky=S)
-
-    map_names = get_map_files('maps')
-    map_vars = StringVar(value=map_names)
-    scrollbar = ttk.Scrollbar(maps_frame, orient=VERTICAL)
-    map_listbox = Listbox(maps_frame, height=10, listvariable=map_vars, exportselection=0,
-                          yscrollcommand=scrollbar.set)
-    scrollbar.config(command=map_listbox.yview)
-    scrollbar.pack(side=RIGHT, fill=Y)
-    map_listbox.pack(side=RIGHT, fill=Y)
-    ttk.Label(mainframe, text='Maps').grid(column=3, row=1, sticky=S)
-
-    ttk.Button(mainframe, text='Go!', command=start_game).grid(column=3, row=3)
-
-    game_frame = SimulationFrame(mainframe)
-    game_frame.grid(column=1, row=4, columnspan=3)
-
-    for child in mainframe.winfo_children():
-        child.grid_configure(padx=5, pady=5)
-
+    root.title = 'Autopylot'
+    gui = AutopylotFrame(root)
+    gui.pack()
     root.mainloop()
