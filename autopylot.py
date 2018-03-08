@@ -50,6 +50,7 @@ class SimulationFrame(Frame):
 
     def initialise(self, controller: GameController):
         self.controller = controller
+        self.simulation_canvas.delete('all')
 
         self.planet_shapes = {}
         self.planet_labels = {}
@@ -108,8 +109,8 @@ class SimulationFrame(Frame):
         # Add fleets that have launched
         for fleet in self.controller.game_state.get_fleets():
             if fleet.fleet_id not in self.fleets:
-                label_id = self.simulation_canvas.create_text(0, 0, fill='white', anchor='center',
-                                                              text=str(fleet.ships))
+                label_id = self.simulation_canvas.create_text(0, 0, fill=self.get_player_color(fleet.player_id),
+                                                              anchor='center', text=str(fleet.ships))
                 self.fleets[fleet.fleet_id] = label_id
 
         # Update position of all fleets
@@ -124,16 +125,18 @@ class SimulationFrame(Frame):
 def start_game():
     bot_1_index = left_bot_listbox.curselection()
     bot_2_index = right_bot_listbox.curselection()
+    map_index = map_listbox.curselection()
 
-    if not bot_1_index or not bot_2_index:
+    if not bot_1_index or not bot_2_index or not map_index:
         return
 
     bot_1 = bots[bot_1_index[0]]
     bot_2 = bots[bot_2_index[0]]
+    map_name = map_names[map_index[0]]
 
     controller.start_game(bot_1, bot_2)
 
-    controller.load_map_file('maps/map99.txt')
+    controller.load_map_file('maps/' + map_name)
     game_frame.initialise(controller)
     game_frame.update_canvas()
 
@@ -169,13 +172,14 @@ if __name__ == '__main__':
     right_bot_frame.grid(column=2, row=2)
     ttk.Label(mainframe, text='Player 2').grid(column=2, row=1, sticky=S)
 
-    map_names = StringVar(value=get_map_files('maps'))
+    map_names = get_map_files('maps')
+    map_vars = StringVar(value=map_names)
     scrollbar = ttk.Scrollbar(maps_frame, orient=VERTICAL)
-    maps_listbox = Listbox(maps_frame, height=10, listvariable=map_names, exportselection=0,
-                           yscrollcommand=scrollbar.set)
-    scrollbar.config(command=maps_listbox.yview)
+    map_listbox = Listbox(maps_frame, height=10, listvariable=map_vars, exportselection=0,
+                          yscrollcommand=scrollbar.set)
+    scrollbar.config(command=map_listbox.yview)
     scrollbar.pack(side=RIGHT, fill=Y)
-    maps_listbox.pack(side=RIGHT, fill=Y)
+    map_listbox.pack(side=RIGHT, fill=Y)
     ttk.Label(mainframe, text='Maps').grid(column=3, row=1, sticky=S)
 
     ttk.Button(mainframe, text='Go!', command=start_game).grid(column=3, row=3)
