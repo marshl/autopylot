@@ -11,7 +11,7 @@ class Bot:
         self.module = None
 
     def __str__(self):
-        return f'Bot:{self.name}'
+        return f'Bot:{self.name}:{self.player_id}'
 
     def reload_module(self):
         if not self.module:
@@ -110,11 +110,11 @@ class GameController:
 
         if bot_1_commands:
             for command in bot_1_commands:
-                self.process_command(command, self.bot_1)
+                self.process_command(command, 1)
 
         if bot_2_commands:
             for command in bot_2_commands:
-                self.process_command(command, self.bot_2)
+                self.process_command(command, 2)
 
         for fleet in self.game_state.fleets:
             fleet.turns_remaining -= 1
@@ -137,13 +137,14 @@ class GameController:
                 planet.ships *= -1
                 planet.player_id = fleet.player_id
 
-    def launch_fleet(self, bot: Bot, source_planet: Planet, destination_planet: Planet, ships: int):
+    def launch_fleet(self, source_planet: Planet, destination_planet: Planet, ships: int):
         if ships <= 0:
             raise ValueError('Can only launch a positive number of ships')
 
         if source_planet.ships - ships <= 0:
             raise ValueError(
-                f'{bot} tried to launch {ships} ships from {source_planet} (has only {source_planet.ships} ships)')
+                f'Player {source_planet.player_id} tried to launch {ships} ships from {source_planet} '
+                f'(has only {source_planet.ships} ships)')
 
         source_planet.ships -= ships
         distance = self.get_trip_length(source_planet, destination_planet)
@@ -157,37 +158,39 @@ class GameController:
         y_dist = source_planet.y_pos - destination_planet.y_pos
         return int(math.sqrt(x_dist ** 2 + y_dist ** 2))
 
-    def process_command(self, command: FleetCommand, bot: Bot):
+    def process_command(self, command: FleetCommand, player_id: int):
         source_planet = self.game_state.get_planet(command.source_planet)
         destination_planet = self.game_state.get_planet(command.destination_planet)
 
         if not source_planet:
-            print(f'{bot} tried to launch {ships} ships from unknown planet {command.source_planet}')
+            print(f'Player {player_id} tried to launch {ships} ships from unknown planet {command.source_planet}')
             return
 
         if command.ships <= 0:
-            print(f'{bot} tried to launch {command.ships} ships from {source_planet}')
+            print(f'Player {player_id} tried to launch {command.ships} ships from {source_planet}')
             return
 
         if command.ships >= source_planet.ships:
-            print(f'{bot} tried to launch too may ships {command.ships} from {source_planet} '
+            print(f'Player {player_id} tried to launch too may ships {command.ships} from {source_planet} '
                   f'(it has only {source_planet.ships} ships)')
             return
 
         if not destination_planet:
-            print(f'{bot} tried to launch {command.ships} from {source_planet} '
+            print(f'Player {player_id} tried to launch {command.ships} from {source_planet} '
                   f'to an unknown planet {command.destination_planet}')
             return
 
-        if source_planet.player_id != bot.player_id:
-            print(f'{bot} tried to launch {command.ships} ships from planet {source_planet} which it doesn\'t own')
+        if source_planet.player_id != player_id:
+            print(
+                f'Player {player_id} tried to launch {command.ships} ships '
+                f'from planet {source_planet} which it doesn\'t own')
             return
 
         if source_planet == destination_planet:
-            print(f'{bot} tried to send {command.ships} ships to/from {source_planet}')
+            print(f'Player {player_id} tried to send {command.ships} ships to/from {source_planet}')
             return
 
-        self.launch_fleet(bot, source_planet, destination_planet, command.ships)
+        self.launch_fleet(source_planet, destination_planet, command.ships)
 
 
 class GameState:
