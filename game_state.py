@@ -67,6 +67,7 @@ class GameController:
         self.bot_1 = self.bot_2 = None
         self.turn_count = 0
         self.game_state = None
+        self.selected_map = None
 
     def start_game(self, bot_1: Bot, bot_2: Bot):
         self.bot_1 = bot_1
@@ -75,6 +76,13 @@ class GameController:
         self.bot_2.player_id = 2
         self.game_state = GameState()
         self.turn_count = 0
+
+    def get_player_bot(self, player_id: int):
+        if player_id == 1:
+            return self.bot_1
+        elif player_id == 2:
+            return self.bot_2
+
 
     def copy_game_state(self, current_player: int):
         state = copy.deepcopy(self.game_state)
@@ -92,6 +100,7 @@ class GameController:
                 planet = Planet(planet_id, x_pos, y_pos, player_id, ships, ship_growth)
                 self.game_state.planets.append(planet)
                 planet_id += 1
+        self.selected_map = map_file
 
     def get_extents(self):
         min_x = min([planet.x_pos for planet in self.game_state.get_planets()])

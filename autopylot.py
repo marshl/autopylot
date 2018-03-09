@@ -66,8 +66,6 @@ class SimulationCanvas(Frame):
 
     def update_canvas(self):
 
-        self.controller.turn_step()
-
         for planet_id, oval_id in self.planet_shapes.items():
             planet = self.controller.game_state.get_planet(planet_id)
             color = self.get_player_color(planet.player_id)
@@ -99,6 +97,8 @@ class SimulationCanvas(Frame):
 
 
 class AutopylotFrame(Frame):
+    turn_limit = 500
+
     def __init__(self, master=None):
         Frame.__init__(self, master)
         self.map_files = self.get_map_files('maps')
@@ -134,14 +134,22 @@ class AutopylotFrame(Frame):
         self.map_listbox.pack(side=RIGHT, fill=Y)
         ttk.Label(self.main_frame, text='Maps').grid(column=3, row=1, sticky=S)
 
-        self.start_button = ttk.Button(self.main_frame, text='Start', command=self.start_game)
-        self.start_button.grid(column=1, row=3)
-        self.resume_button = ttk.Button(self.main_frame, text='Resume', command=self.resume_game)
-        self.resume_button.grid(column=2, row=3)
+        buttons_frame = Frame(self.main_frame)
+        buttons_frame.grid(column=1, row=3, columnspan=3)
+        self.start_button = ttk.Button(buttons_frame, text='Start', command=self.start_game)
+        self.start_button.pack(side=LEFT)
+
+        self.resume_button = ttk.Button(buttons_frame, text='Resume', command=self.resume_game)
         self.resume_button.config(state=DISABLED)
-        self.stop_button = ttk.Button(self.main_frame, text='Stop', command=self.stop_game)
-        self.stop_button.grid(column=3, row=3)
+        self.resume_button.pack(side=LEFT)
+
+        self.stop_button = ttk.Button(buttons_frame, text='Stop', command=self.stop_game)
         self.stop_button.config(state=DISABLED)
+        self.stop_button.pack(side=LEFT)
+
+        self.message_box = Text(self.main_frame)
+        self.message_box.config(state=DISABLED)
+        self.message_box.grid(column=4, row=1, rowspan=4)
 
         self.game_frame = SimulationCanvas(self.main_frame)
         self.game_frame.grid(column=1, row=4, columnspan=3)
@@ -222,8 +230,45 @@ class AutopylotFrame(Frame):
         if not self.is_game_running:
             return
 
+        self.controller.turn_step()
         self.game_frame.update_canvas()
+
+        lost_player = self.controller.game_state.get_lost_player()
+        if lost_player or self.controller.turn_count >= self.turn_limit:
+
+            winning_player = self.controller.game_state.get_winning_player()
+            if winning_player:
+                losing_player = 2 if winning_player == 1 else 1
+                self.on_player_win(winning_player, losing_player)
+            else:
+                self.on_game_draw()
+
+            return
+
         self.after(int(1000 / 12), self.update_game)
+
+    def on_player_win(self, winning_id: int, losing_id: int):
+
+        winning_bot = self.controller.get_player_bot(winning_id)
+        losing_bot = self.controller.get_player_bot(losing_id)
+
+        self.add_message(f'{winning_bot} defeated {losing_bot} '
+                         f'on {self.controller.selected_map} in {self.controller.turn_count} turns')
+        self.stop_game()
+
+    def add_message(self, message: str):
+        self.message_box.configure(state=NORMAL)
+        self.message_box.insert(END, message + '\n')
+        self.message_box.see(END)
+        self.message_box.configure(state=DISABLED)
+
+    def on_game_draw(self):
+
+        bot_1 = self.controller.get_player_bot(1)
+        bot_2 = self.controller.get_player_bot(2)
+
+        self.add_message(f'{bot_1} and {bot_2} drew on {self.controller.selected_map}')
+        self.stop_game()
 
 
 if __name__ == '__main__':
