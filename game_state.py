@@ -62,7 +62,26 @@ class FleetCommand:
         self.ships = ships
 
 
+class GameResult:
+    def __init__(self, map_name: str, bot_1: Bot, bot_2: Bot, winning_player: int, turn: int):
+        self.map_name = map_name
+        self.bot_1 = bot_1
+        self.bot_2 = bot_2
+        self.winning_player = winning_player
+        self.turn = turn
+
+    def __str__(self):
+        if self.winning_player == 0:
+            return f'{self.bot_1} and {self.bot_2} drew on {self.map_name} after {self.turn} turns'
+        else:
+            winning_bot = self.bot_1 if self.winning_player == 1 else self.bot_2
+            losing_bot = self.bot_1 if self.winning_player == 2 else self.bot_2
+            return f'{winning_bot} defeated {losing_bot} on {self.map_name} on turn {self.turn}'
+
+
 class GameController:
+    turn_limit = 500
+
     def __init__(self):
         self.bot_1 = self.bot_2 = None
         self.turn_count = 0
@@ -82,7 +101,6 @@ class GameController:
             return self.bot_1
         elif player_id == 2:
             return self.bot_2
-
 
     def copy_game_state(self, current_player: int):
         state = copy.deepcopy(self.game_state)
@@ -200,6 +218,14 @@ class GameController:
             return
 
         self.launch_fleet(source_planet, destination_planet, command.ships)
+
+    def get_game_result(self):
+        lost_player = self.game_state.get_lost_player()
+        if lost_player or self.turn_count >= self.turn_limit:
+            winning_player = self.game_state.get_winning_player()
+            return GameResult(self.selected_map, self.bot_1, self.bot_2, winning_player, self.turn_count)
+
+        return None
 
 
 class GameState:

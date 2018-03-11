@@ -97,7 +97,6 @@ class SimulationCanvas(Frame):
 
 
 class AutopylotFrame(Frame):
-    turn_limit = 500
 
     def __init__(self, master=None):
         Frame.__init__(self, master)
@@ -146,6 +145,9 @@ class AutopylotFrame(Frame):
         self.stop_button = ttk.Button(buttons_frame, text='Stop', command=self.stop_game)
         self.stop_button.config(state=DISABLED)
         self.stop_button.pack(side=LEFT)
+
+        self.autoplay_button = ttk.Button(buttons_frame, text='Play All', command=self.play_all_games)
+        self.autoplay_button.pack(side=LEFT)
 
         self.message_box = Text(self.main_frame)
         self.message_box.config(state=DISABLED)
@@ -227,34 +229,16 @@ class AutopylotFrame(Frame):
 
     def update_game(self):
 
-        if not self.is_game_running:
-            return
-
         self.controller.turn_step()
         self.game_frame.update_canvas()
 
-        lost_player = self.controller.game_state.get_lost_player()
-        if lost_player or self.controller.turn_count >= self.turn_limit:
-
-            winning_player = self.controller.game_state.get_winning_player()
-            if winning_player:
-                losing_player = 2 if winning_player == 1 else 1
-                self.on_player_win(winning_player, losing_player)
-            else:
-                self.on_game_draw()
-
+        result = self.controller.get_game_result()
+        if result:
+            self.add_message(str(result))
+            self.stop_game()
             return
 
         self.after(int(1000 / 12), self.update_game)
-
-    def on_player_win(self, winning_id: int, losing_id: int):
-
-        winning_bot = self.controller.get_player_bot(winning_id)
-        losing_bot = self.controller.get_player_bot(losing_id)
-
-        self.add_message(f'{winning_bot} defeated {losing_bot} '
-                         f'on {self.controller.selected_map} in {self.controller.turn_count} turns')
-        self.stop_game()
 
     def add_message(self, message: str):
         self.message_box.configure(state=NORMAL)
@@ -262,13 +246,27 @@ class AutopylotFrame(Frame):
         self.message_box.see(END)
         self.message_box.configure(state=DISABLED)
 
-    def on_game_draw(self):
+    def play_all_games(self):
+        if self.is_game_running:
+            return
 
-        bot_1 = self.controller.get_player_bot(1)
-        bot_2 = self.controller.get_player_bot(2)
+        pairs = [(x, y) for x_idx, x in enumerate(self.bots) for y_idx, y in enumerate(self.bots) if x_idx < y_idx]
+        results = []
 
-        self.add_message(f'{bot_1} and {bot_2} drew on {self.controller.selected_map}')
-        self.stop_game()
+        for bot_1, bot_2 in pairs:
+            for map_file in self.map_files:
+                self.controller.start_game(bot_1, bot_2)
+                self.controller.load_map_file('maps/' + map_file)
+                self.game_frame.initialise(self.controller)
+
+                print(f'{bot_1} vs {bot_2} on {map_file}')
+                while True:
+                    self.controller.turn_step()
+                    result = self.controller.get_game_result()
+                    if result:
+                        self.add_message(str(result))
+                        results.append(result)
+                        break
 
 
 if __name__ == '__main__':
