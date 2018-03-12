@@ -1,6 +1,7 @@
-import importlib
+from multiprocessing import Pool
 import os
 from os import path
+from time import time
 
 from tkinter import *
 import tkinter.ttk as ttk
@@ -251,22 +252,34 @@ class AutopylotFrame(Frame):
             return
 
         pairs = [(x, y) for x_idx, x in enumerate(self.bots) for y_idx, y in enumerate(self.bots) if x_idx < y_idx]
-        results = []
+        pair_maps = [(bot_1, bot_2, map_file) for bot_1, bot_2 in pairs for map_file in self.map_files]
+        pool = Pool(processes=8)
+        results = pool.map(autoplay_map, pair_maps)
 
-        for bot_1, bot_2 in pairs:
-            for map_file in self.map_files:
-                self.controller.start_game(bot_1, bot_2)
-                self.controller.load_map_file('maps/' + map_file)
-                self.game_frame.initialise(self.controller)
+        for result in results:
+            self.add_message(str(result))
 
-                print(f'{bot_1} vs {bot_2} on {map_file}')
-                while True:
-                    self.controller.turn_step()
-                    result = self.controller.get_game_result()
-                    if result:
-                        self.add_message(str(result))
-                        results.append(result)
-                        break
+        for bot in self.bots:
+            win_count = sum([result.get_winning_bot().name == bot.name for result in results])
+            lose_count = sum([result.get_losing_bot().name == bot.name for result in results])
+            draw_count = sum([result.winning_player == 0 for result in results])
+            self.add_message(f'{bot} won {win_count} games and lost {lose_count} games (drew {draw_count} games)')
+
+
+def autoplay_map(args):
+    bot_1 = args[0]
+    bot_2 = args[1]
+    map_file = args[2]
+    controller = GameController()
+    controller.start_game(bot_1, bot_2)
+
+    controller.load_map_file('maps/' + map_file)
+
+    while True:
+        controller.turn_step()
+        result = controller.get_game_result()
+        if result:
+            return result
 
 
 if __name__ == '__main__':

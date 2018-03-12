@@ -8,22 +8,12 @@ class Bot:
         self.player_id = None
         self.filename = filename
         self.name = self.module_name = self.filename.replace('.py', '')
-        self.module = None
 
     def __str__(self):
         return f'Bot:{self.name}:{self.player_id}'
 
-    def reload_module(self):
-        if not self.module:
-            self.module = importlib.import_module('bots.' + self.module_name)
-        else:
-            self.module = importlib.reload(self.module)
-
     def get_module(self):
-        if not self.module:
-            self.reload_module()
-
-        return self.module
+        return importlib.import_module('bots.' + self.module_name)
 
 
 class Fleet:
@@ -77,6 +67,12 @@ class GameResult:
             winning_bot = self.bot_1 if self.winning_player == 1 else self.bot_2
             losing_bot = self.bot_1 if self.winning_player == 2 else self.bot_2
             return f'{winning_bot} defeated {losing_bot} on {self.map_name} on turn {self.turn}'
+
+    def get_winning_bot(self):
+        return self.bot_1 if self.winning_player == 1 else self.bot_2 if self.winning_player == 2 else None
+
+    def get_losing_bot(self):
+        return self.bot_2 if self.winning_player == 1 else self.bot_1 if self.winning_player == 2 else None
 
 
 class GameController:
