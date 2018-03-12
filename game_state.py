@@ -189,41 +189,38 @@ class GameController:
 
         source_planet = self.game_state.get_planet(command.source_planet)
         destination_planet = self.game_state.get_planet(command.destination_planet)
+        ships = int(command.ships)
 
         if not source_planet:
             print(f'Player {player_id} tried to launch {ships} ships from unknown planet {command.source_planet}')
             return
 
-        if command.ships <= 0:
-            print(f'Player {player_id} tried to launch {command.ships} ships from {source_planet}')
+        if ships <= 0:
+            print(f'Player {player_id} tried to send an invalid number of ships "{ships}" '
+                  f'from planet {source_planet} to {destination_planet}')
             return
 
-        if command.ships >= source_planet.ships:
-            print(f'Player {player_id} tried to launch too may ships {command.ships} from {source_planet} '
+        if ships > source_planet.ships:
+            print(f'Player {player_id} tried to launch too may ships {ships} from {source_planet} '
                   f'(it has only {source_planet.ships} ships)')
             return
 
         if not destination_planet:
-            print(f'Player {player_id} tried to launch {command.ships} from {source_planet} '
+            print(f'Player {player_id} tried to launch {ships} from {source_planet} '
                   f'to an unknown planet {command.destination_planet}')
             return
 
         if source_planet.player_id != player_id:
             print(
-                f'Player {player_id} tried to launch {command.ships} ships '
+                f'Player {player_id} tried to launch {ships} ships '
                 f'from planet {source_planet} which it doesn\'t own')
             return
 
         if source_planet == destination_planet:
-            print(f'Player {player_id} tried to send {command.ships} ships to/from {source_planet}')
+            print(f'Player {player_id} tried to send {ships} ships to/from {source_planet}')
             return
 
-        if command.ships <= 0:
-            print(f'Player {player_id} tried to send an invalid number of ships "{command.ships}" '
-                  f'from planet {source_planet} to {destination_planet}')
-            return
-
-        self.launch_fleet(source_planet, destination_planet, int(command.ships))
+        self.launch_fleet(source_planet, destination_planet, ships)
 
     def get_game_result(self):
         lost_player = self.game_state.get_lost_player()
