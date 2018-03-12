@@ -170,16 +170,11 @@ class GameController:
                 f'(has only {source_planet.ships} ships)')
 
         source_planet.ships -= ships
-        distance = self.get_trip_length(source_planet, destination_planet)
+        distance = self.game_state.get_trip_length(source_planet.planet_id, destination_planet.planet_id)
         fleet = Fleet(ships, source_planet.player_id, source_planet.planet_id, destination_planet.planet_id, distance)
         fleet.fleet_id = self.game_state.next_fleet_id
         self.game_state.next_fleet_id += 1
         self.game_state.fleets.append(fleet)
-
-    def get_trip_length(self, source_planet: Planet, destination_planet: Planet):
-        x_dist = source_planet.x_pos - destination_planet.x_pos
-        y_dist = source_planet.y_pos - destination_planet.y_pos
-        return int(math.sqrt(x_dist ** 2 + y_dist ** 2))
 
     def process_command(self, command: FleetCommand, player_id: int):
         source_planet = self.game_state.get_planet(command.source_planet)
@@ -213,7 +208,12 @@ class GameController:
             print(f'Player {player_id} tried to send {command.ships} ships to/from {source_planet}')
             return
 
-        self.launch_fleet(source_planet, destination_planet, command.ships)
+        if command.ships <= 1:
+            print(f'Player {player_id} tried to send an invalid number of ships "{command.ships}" '
+                  f'from planet {source_planet} to {destination_planet}')
+            return
+
+        self.launch_fleet(source_planet, destination_planet, int(command.ships))
 
     def get_game_result(self):
         lost_player = self.game_state.get_lost_player()
@@ -305,3 +305,8 @@ class GameState:
 
     def get_enemy_planet_count(self):
         return len(self.get_enemy_planets())
+
+    def get_trip_length(self, source_planet: int, destination_planet: int):
+        x_dist = self.get_planet(source_planet).x_pos - self.get_planet(destination_planet).x_pos
+        y_dist = self.get_planet(source_planet).y_pos - self.get_planet(destination_planet).y_pos
+        return math.hypot(x_dist, y_dist)

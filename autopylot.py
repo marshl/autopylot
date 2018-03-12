@@ -44,7 +44,8 @@ class SimulationCanvas(Frame):
                                                        anchor='center')
             self.planet_labels[planet.planet_id] = label
 
-    def get_player_color(self, player_id: int):
+    @staticmethod
+    def get_player_color(player_id: int):
         return {0: 'blue', 1: 'red', 2: 'green'}[player_id]
 
     def callback(self):
@@ -119,11 +120,13 @@ class AutopylotFrame(Frame):
         bot_name_list = StringVar(value=[bot.name for bot in self.bots])
         self.left_bot_frame, self.left_bot_listbox = self.create_bot_frame(self.main_frame, bot_name_list)
         self.left_bot_frame.grid(column=1, row=2)
-        ttk.Label(self.main_frame, text='Player 1').grid(column=1, row=1, sticky=S)
+        ttk.Label(self.main_frame, text='Player 1', foreground=SimulationCanvas.get_player_color(1)) \
+            .grid(column=1, row=1, sticky=S)
 
         self.right_bot_frame, self.right_bot_listbox = self.create_bot_frame(self.main_frame, bot_name_list)
         self.right_bot_frame.grid(column=2, row=2)
-        ttk.Label(self.main_frame, text='Player 2').grid(column=2, row=1, sticky=S)
+        ttk.Label(self.main_frame, text='Player 2', foreground=SimulationCanvas.get_player_color(2)) \
+            .grid(column=2, row=1, sticky=S)
 
         map_vars = StringVar(value=self.map_files)
         scrollbar = ttk.Scrollbar(maps_frame, orient=VERTICAL)
@@ -263,7 +266,7 @@ class AutopylotFrame(Frame):
             win_count = sum([result.get_winning_bot().name == bot.name for result in results])
             lose_count = sum([result.get_losing_bot().name == bot.name for result in results])
             draw_count = sum([result.winning_player == 0 for result in results])
-            self.add_message(f'{bot} won {win_count} games and lost {lose_count} games (drew {draw_count} games)')
+            self.add_message(f'{bot.name} won {win_count} games and lost {lose_count} games (drew {draw_count} games)')
 
 
 def autoplay_map(args):
