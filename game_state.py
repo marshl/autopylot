@@ -132,10 +132,16 @@ class GameController:
         bot_2_commands = self.bot_2.get_module().get_commands(self.copy_game_state(2))
 
         if bot_1_commands:
+            if not isinstance(bot_1_commands, list):
+                bot_1_commands = [bot_1_commands]
+
             for command in bot_1_commands:
                 self.process_command(command, 1)
 
         if bot_2_commands:
+            if not isinstance(bot_2_commands, list):
+                bot_2_commands = [bot_2_commands]
+
             for command in bot_2_commands:
                 self.process_command(command, 2)
 
@@ -177,6 +183,10 @@ class GameController:
         self.game_state.fleets.append(fleet)
 
     def process_command(self, command: FleetCommand, player_id: int):
+        if not isinstance(command, FleetCommand):
+            print(f'Player {player_id} returned an object that was not a FleetCommand')
+            return
+
         source_planet = self.game_state.get_planet(command.source_planet)
         destination_planet = self.game_state.get_planet(command.destination_planet)
 
@@ -208,7 +218,7 @@ class GameController:
             print(f'Player {player_id} tried to send {command.ships} ships to/from {source_planet}')
             return
 
-        if command.ships <= 1:
+        if command.ships <= 0:
             print(f'Player {player_id} tried to send an invalid number of ships "{command.ships}" '
                   f'from planet {source_planet} to {destination_planet}')
             return

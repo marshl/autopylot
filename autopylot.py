@@ -232,6 +232,8 @@ class AutopylotFrame(Frame):
         self.update_game()
 
     def update_game(self):
+        if not self.is_game_running:
+            return
 
         self.controller.turn_step()
         self.game_frame.update_canvas()
@@ -254,6 +256,7 @@ class AutopylotFrame(Frame):
         if self.is_game_running:
             return
 
+        # Get all combinations of every bot against every other bot
         pairs = [(x, y) for x_idx, x in enumerate(self.bots) for y_idx, y in enumerate(self.bots) if x_idx < y_idx]
         pair_maps = [(bot_1, bot_2, map_file) for bot_1, bot_2 in pairs for map_file in self.map_files]
         pool = Pool(processes=8)

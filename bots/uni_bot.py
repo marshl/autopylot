@@ -13,7 +13,7 @@ def get_commands(game_state: GameState):
     source_planet = max(game_state.get_my_planets(), key=lambda p: p.ships)
 
     if not source_planet:
-        return []
+        return
 
     if len(game_state.get_enemy_planets()) == 0 and len(game_state.get_enemy_fleets()) > 0:
         return [FleetCommand(source_planet.planet_id, enemy_fleet.destination_planet, source_planet.ships / 2) \
@@ -52,21 +52,21 @@ def get_commands(game_state: GameState):
             target_planet = planet
 
     if target_planet is None:
-        return []
+        return
 
     num_ships = get_planet_plus_fleets(game_state, source_planet.planet_id) / 2
     target_num_ships = get_planet_plus_fleets(game_state, target_planet.planet_id)
 
     if num_ships > target_num_ships:
         if target_planet.player_id == 0:
-            return [FleetCommand(source_planet.planet_id, target_planet.planet_id, target_num_ships + 10)]
+            return FleetCommand(source_planet.planet_id, target_planet.planet_id, target_num_ships + 10)
 
         if target_planet.player_id != game_state.current_player:
             dist = game_state.get_trip_length(source_planet.planet_id, target_planet.planet_id)
-            return [FleetCommand(source_planet.planet_id, target_planet.planet_id,
-                                 target_num_ships + target_planet.ship_growth * dist + 10)]
+            return FleetCommand(source_planet.planet_id, target_planet.planet_id,
+                                target_num_ships + target_planet.ship_growth * dist + 10)
 
         if target_planet.player_id == game_state.current_player:
-            return [FleetCommand(source_planet.planet_id, target_planet.planet_id, target_num_ships + 10)]
+            return FleetCommand(source_planet.planet_id, target_planet.planet_id, target_num_ships + 10)
 
     return []
