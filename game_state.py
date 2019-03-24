@@ -170,7 +170,7 @@ class GameController:
         if ships <= 0:
             raise ValueError('Can only launch a positive number of ships')
 
-        if source_planet.ships - ships <= 0:
+        if source_planet.ships - ships < 0:
             raise ValueError(
                 f'Player {source_planet.player_id} tried to launch {ships} ships from {source_planet} '
                 f'(has only {source_planet.ships} ships)')
