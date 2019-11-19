@@ -20,7 +20,9 @@ class SimulationCanvas(Frame):
         self.y_scale_factor = self.canvas_height / self.max_y
 
         self.controller = None
-        self.simulation_canvas = Canvas(self, background='black', width=self.canvas_width, height=self.canvas_height)
+        self.simulation_canvas = Canvas(
+            self, background="black", width=self.canvas_width, height=self.canvas_height
+        )
         self.simulation_canvas.pack()
 
         self.planet_shapes = {}
@@ -29,7 +31,7 @@ class SimulationCanvas(Frame):
 
     def initialise(self, controller: GameController):
         self.controller = controller
-        self.simulation_canvas.delete('all')
+        self.simulation_canvas.delete("all")
 
         self.planet_shapes = {}
         self.planet_labels = {}
@@ -37,16 +39,19 @@ class SimulationCanvas(Frame):
         for planet in controller.game_state.get_planets():
             x_pos, y_pos = self.map_to_canvas_coord(planet.x_pos, planet.y_pos)
             size = (planet.ship_growth + 3) * 3.5
-            shape = self.simulation_canvas.create_oval((x_pos, y_pos, x_pos + size, y_pos + size))
+            shape = self.simulation_canvas.create_oval(
+                (x_pos, y_pos, x_pos + size, y_pos + size)
+            )
             self.planet_shapes[planet.planet_id] = shape
 
-            label = self.simulation_canvas.create_text(x_pos + size / 2, y_pos + size / 2, fill='white',
-                                                       anchor='center')
+            label = self.simulation_canvas.create_text(
+                x_pos + size / 2, y_pos + size / 2, fill="white", anchor="center"
+            )
             self.planet_labels[planet.planet_id] = label
 
     @staticmethod
     def get_player_color(player_id: int):
-        return {0: 'blue', 1: 'red', 2: 'green'}[player_id]
+        return {0: "blue", 1: "red", 2: "green"}[player_id]
 
     def callback(self):
         pass
@@ -57,14 +62,23 @@ class SimulationCanvas(Frame):
     def get_fleet_position(self, fleet: Fleet):
 
         source_planet = self.controller.game_state.get_planet(fleet.source_planet)
-        destination_planet = self.controller.game_state.get_planet(fleet.destination_planet)
+        destination_planet = self.controller.game_state.get_planet(
+            fleet.destination_planet
+        )
 
-        start_x, start_y = self.map_to_canvas_coord(source_planet.x_pos, source_planet.y_pos)
-        end_x, end_y = self.map_to_canvas_coord(destination_planet.x_pos, destination_planet.y_pos)
+        start_x, start_y = self.map_to_canvas_coord(
+            source_planet.x_pos, source_planet.y_pos
+        )
+        end_x, end_y = self.map_to_canvas_coord(
+            destination_planet.x_pos, destination_planet.y_pos
+        )
 
         travel_delta = fleet.get_turns_travelled() / fleet.total_trip_length
 
-        return start_x + (end_x - start_x) * travel_delta, start_y + (end_y - start_y) * travel_delta
+        return (
+            start_x + (end_x - start_x) * travel_delta,
+            start_y + (end_y - start_y) * travel_delta,
+        )
 
     def update_canvas(self):
 
@@ -87,8 +101,13 @@ class SimulationCanvas(Frame):
         # Add fleets that have launched
         for fleet in self.controller.game_state.get_fleets():
             if fleet.fleet_id not in self.fleets:
-                label_id = self.simulation_canvas.create_text(0, 0, fill=self.get_player_color(fleet.player_id),
-                                                              anchor='center', text=str(fleet.ships))
+                label_id = self.simulation_canvas.create_text(
+                    0,
+                    0,
+                    fill=self.get_player_color(fleet.player_id),
+                    anchor="center",
+                    text=str(fleet.ships),
+                )
                 self.fleets[fleet.fleet_id] = label_id
 
         # Update position of all fleets
@@ -99,11 +118,10 @@ class SimulationCanvas(Frame):
 
 
 class AutopylotFrame(Frame):
-
     def __init__(self, master=None):
         Frame.__init__(self, master)
-        self.map_files = self.get_map_files('maps')
-        self.bot_files = self.get_bot_files('bots')
+        self.map_files = self.get_map_files("maps")
+        self.bot_files = self.get_bot_files("bots")
         self.bots = self.load_bots()
 
         self.controller = GameController()
@@ -118,39 +136,62 @@ class AutopylotFrame(Frame):
         maps_frame.grid(column=3, row=2)
 
         bot_name_list = StringVar(value=[bot.name for bot in self.bots])
-        self.left_bot_frame, self.left_bot_listbox = self.create_bot_frame(self.main_frame, bot_name_list)
+        self.left_bot_frame, self.left_bot_listbox = self.create_bot_frame(
+            self.main_frame, bot_name_list
+        )
         self.left_bot_frame.grid(column=1, row=2)
-        ttk.Label(self.main_frame, text='Player 1', foreground=SimulationCanvas.get_player_color(1)) \
-            .grid(column=1, row=1, sticky=S)
+        ttk.Label(
+            self.main_frame,
+            text="Player 1",
+            foreground=SimulationCanvas.get_player_color(1),
+        ).grid(column=1, row=1, sticky=S)
 
-        self.right_bot_frame, self.right_bot_listbox = self.create_bot_frame(self.main_frame, bot_name_list)
+        self.right_bot_frame, self.right_bot_listbox = self.create_bot_frame(
+            self.main_frame, bot_name_list
+        )
         self.right_bot_frame.grid(column=2, row=2)
-        ttk.Label(self.main_frame, text='Player 2', foreground=SimulationCanvas.get_player_color(2)) \
-            .grid(column=2, row=1, sticky=S)
+        ttk.Label(
+            self.main_frame,
+            text="Player 2",
+            foreground=SimulationCanvas.get_player_color(2),
+        ).grid(column=2, row=1, sticky=S)
 
         map_vars = StringVar(value=self.map_files)
         scrollbar = ttk.Scrollbar(maps_frame, orient=VERTICAL)
-        self.map_listbox = Listbox(maps_frame, height=10, listvariable=map_vars, exportselection=0,
-                                   yscrollcommand=scrollbar.set)
+        self.map_listbox = Listbox(
+            maps_frame,
+            height=10,
+            listvariable=map_vars,
+            exportselection=0,
+            yscrollcommand=scrollbar.set,
+        )
         scrollbar.config(command=self.map_listbox.yview)
         scrollbar.pack(side=RIGHT, fill=Y)
         self.map_listbox.pack(side=RIGHT, fill=Y)
-        ttk.Label(self.main_frame, text='Maps').grid(column=3, row=1, sticky=S)
+        ttk.Label(self.main_frame, text="Maps").grid(column=3, row=1, sticky=S)
 
         buttons_frame = Frame(self.main_frame)
         buttons_frame.grid(column=1, row=3, columnspan=3)
-        self.start_button = ttk.Button(buttons_frame, text='Start', command=self.start_game)
+        self.start_button = ttk.Button(
+            buttons_frame, text="Start", command=self.start_game
+        )
         self.start_button.pack(side=LEFT)
 
-        self.resume_button = ttk.Button(buttons_frame, text='Resume', command=self.resume_game)
+        self.resume_button = ttk.Button(
+            buttons_frame, text="Resume", command=self.resume_game
+        )
         self.resume_button.config(state=DISABLED)
         self.resume_button.pack(side=LEFT)
 
-        self.stop_button = ttk.Button(buttons_frame, text='Stop', command=self.stop_game)
+        self.stop_button = ttk.Button(
+            buttons_frame, text="Stop", command=self.stop_game
+        )
         self.stop_button.config(state=DISABLED)
         self.stop_button.pack(side=LEFT)
 
-        self.autoplay_button = ttk.Button(buttons_frame, text='Play All', command=self.play_all_games)
+        self.autoplay_button = ttk.Button(
+            buttons_frame, text="Play All", command=self.play_all_games
+        )
         self.autoplay_button.pack(side=LEFT)
 
         self.message_box = Text(self.main_frame)
@@ -164,13 +205,23 @@ class AutopylotFrame(Frame):
             child.grid_configure(padx=5, pady=5)
 
     def get_map_files(self, map_path: str):
-        return [file for file in os.listdir(map_path) if path.isfile(path.join(map_path, file))]
+        return [
+            file
+            for file in os.listdir(map_path)
+            if path.isfile(path.join(map_path, file))
+        ]
 
     def get_bot_files(self, bot_path: str):
-        return [file for file in os.listdir(bot_path) if path.isfile(path.join(bot_path, file))]
+        return [
+            file
+            for file in os.listdir(bot_path)
+            if path.isfile(path.join(bot_path, file))
+        ]
 
     def load_bots(self):
-        files = [file for file in os.listdir('bots') if path.isfile(path.join('bots', file))]
+        files = [
+            file for file in os.listdir("bots") if path.isfile(path.join("bots", file))
+        ]
         bots = [Bot(file) for file in files]
         return bots
 
@@ -178,8 +229,13 @@ class AutopylotFrame(Frame):
         bot_frame = ttk.Frame(parent_frame)
 
         scrollbar = ttk.Scrollbar(bot_frame, orient=VERTICAL)
-        bots_listbox = Listbox(bot_frame, height=10, listvariable=bot_names, exportselection=0,
-                               yscrollcommand=scrollbar.set)
+        bots_listbox = Listbox(
+            bot_frame,
+            height=10,
+            listvariable=bot_names,
+            exportselection=0,
+            yscrollcommand=scrollbar.set,
+        )
 
         scrollbar.config(command=bots_listbox.yview)
         scrollbar.pack(side=RIGHT, fill=Y)
@@ -204,7 +260,7 @@ class AutopylotFrame(Frame):
 
         self.controller.start_game(bot_1, bot_2)
 
-        self.controller.load_map_file('maps/' + map_name)
+        self.controller.load_map_file("maps/" + map_name)
         self.game_frame.initialise(self.controller)
 
         self.stop_button.config(state=NORMAL)
@@ -248,7 +304,7 @@ class AutopylotFrame(Frame):
 
     def add_message(self, message: str):
         self.message_box.configure(state=NORMAL)
-        self.message_box.insert(END, message + '\n')
+        self.message_box.insert(END, message + "\n")
         self.message_box.see(END)
         self.message_box.configure(state=DISABLED)
 
@@ -257,8 +313,17 @@ class AutopylotFrame(Frame):
             return
 
         # Get all combinations of every bot against every other bot
-        pairs = [(x, y) for x_idx, x in enumerate(self.bots) for y_idx, y in enumerate(self.bots) if x_idx < y_idx]
-        pair_maps = [(bot_1, bot_2, map_file) for bot_1, bot_2 in pairs for map_file in self.map_files]
+        pairs = [
+            (x, y)
+            for x_idx, x in enumerate(self.bots)
+            for y_idx, y in enumerate(self.bots)
+            if x_idx < y_idx
+        ]
+        pair_maps = [
+            (bot_1, bot_2, map_file)
+            for bot_1, bot_2 in pairs
+            for map_file in self.map_files
+        ]
         pool = Pool(processes=8)
         results = pool.map(autoplay_map, pair_maps)
 
@@ -266,10 +331,16 @@ class AutopylotFrame(Frame):
             self.add_message(str(result))
 
         for bot in self.bots:
-            win_count = sum([result.get_winning_bot().name == bot.name for result in results])
-            lose_count = sum([result.get_losing_bot().name == bot.name for result in results])
+            win_count = sum(
+                [result.get_winning_bot().name == bot.name for result in results]
+            )
+            lose_count = sum(
+                [result.get_losing_bot().name == bot.name for result in results]
+            )
             draw_count = sum([result.winning_player == 0 for result in results])
-            self.add_message(f'{bot.name} won {win_count} games and lost {lose_count} games (drew {draw_count} games)')
+            self.add_message(
+                f"{bot.name} won {win_count} games and lost {lose_count} games (drew {draw_count} games)"
+            )
 
 
 def autoplay_map(args):
@@ -279,7 +350,7 @@ def autoplay_map(args):
     controller = GameController()
     controller.start_game(bot_1, bot_2)
 
-    controller.load_map_file('maps/' + map_file)
+    controller.load_map_file("maps/" + map_file)
 
     while True:
         controller.turn_step()
@@ -288,9 +359,9 @@ def autoplay_map(args):
             return result
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     root = Tk()
-    root.title = 'Autopylot'
+    root.title = "Autopylot"
     gui = AutopylotFrame(root)
     gui.pack()
     root.mainloop()

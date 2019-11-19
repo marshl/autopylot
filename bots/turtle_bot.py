@@ -9,7 +9,9 @@ def get_commands(game_state: GameState):
     for neutral in game_state.get_neutral_planets():
         for mine in game_state.get_my_planets():
             if mine.ships >= neutral.ships + 2:
-                return [FleetCommand(mine.planet_id, neutral.planet_id, neutral.ships + 1)]
+                return [
+                    FleetCommand(mine.planet_id, neutral.planet_id, neutral.ships + 1)
+                ]
 
     for enemy in game_state.get_enemy_planets():
         for mine in game_state.get_my_planets():

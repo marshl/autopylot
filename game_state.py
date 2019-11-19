@@ -7,17 +7,24 @@ class Bot:
     def __init__(self, filename: str):
         self.player_id = None
         self.filename = filename
-        self.name = self.module_name = self.filename.replace('.py', '')
+        self.name = self.module_name = self.filename.replace(".py", "")
 
     def __str__(self):
-        return f'Bot:{self.name}:{self.player_id}'
+        return f"Bot:{self.name}:{self.player_id}"
 
     def get_module(self):
-        return importlib.import_module('bots.' + self.module_name)
+        return importlib.import_module("bots." + self.module_name)
 
 
 class Fleet:
-    def __init__(self, ships: int, player_id: int, source_planet: int, destination_planet: int, total_trip_length: int):
+    def __init__(
+        self,
+        ships: int,
+        player_id: int,
+        source_planet: int,
+        destination_planet: int,
+        total_trip_length: int,
+    ):
         self.ships = ships
         self.player_id = player_id
         self.source_planet = source_planet
@@ -27,14 +34,22 @@ class Fleet:
         self.turns_remaining = total_trip_length
 
     def __str__(self):
-        return f'Fleet:{self.fleet_id}'
+        return f"Fleet:{self.fleet_id}"
 
     def get_turns_travelled(self):
         return self.total_trip_length - self.turns_remaining
 
 
 class Planet:
-    def __init__(self, planet_id: int, x_pos: float, y_pos: float, player_id: int, ships: int, ship_growth: int):
+    def __init__(
+        self,
+        planet_id: int,
+        x_pos: float,
+        y_pos: float,
+        player_id: int,
+        ships: int,
+        ship_growth: int,
+    ):
         self.planet_id = planet_id
         self.x_pos, self.y_pos = x_pos, y_pos
         self.player_id = player_id
@@ -42,7 +57,7 @@ class Planet:
         self.ship_growth = ship_growth
 
     def __str__(self):
-        return f'Planet:{self.planet_id}'
+        return f"Planet:{self.planet_id}"
 
 
 class FleetCommand:
@@ -53,7 +68,9 @@ class FleetCommand:
 
 
 class GameResult:
-    def __init__(self, map_name: str, bot_1: Bot, bot_2: Bot, winning_player: int, turn: int):
+    def __init__(
+        self, map_name: str, bot_1: Bot, bot_2: Bot, winning_player: int, turn: int
+    ):
         self.map_name = map_name
         self.bot_1 = bot_1
         self.bot_2 = bot_2
@@ -62,17 +79,29 @@ class GameResult:
 
     def __str__(self):
         if self.winning_player == 0:
-            return f'{self.bot_1} and {self.bot_2} drew on {self.map_name} after {self.turn} turns'
+            return f"{self.bot_1} and {self.bot_2} drew on {self.map_name} after {self.turn} turns"
         else:
             winning_bot = self.bot_1 if self.winning_player == 1 else self.bot_2
             losing_bot = self.bot_1 if self.winning_player == 2 else self.bot_2
-            return f'{winning_bot} defeated {losing_bot} on {self.map_name} on turn {self.turn}'
+            return f"{winning_bot} defeated {losing_bot} on {self.map_name} on turn {self.turn}"
 
     def get_winning_bot(self):
-        return self.bot_1 if self.winning_player == 1 else self.bot_2 if self.winning_player == 2 else None
+        return (
+            self.bot_1
+            if self.winning_player == 1
+            else self.bot_2
+            if self.winning_player == 2
+            else None
+        )
 
     def get_losing_bot(self):
-        return self.bot_2 if self.winning_player == 1 else self.bot_1 if self.winning_player == 2 else None
+        return (
+            self.bot_2
+            if self.winning_player == 1
+            else self.bot_1
+            if self.winning_player == 2
+            else None
+        )
 
 
 class GameController:
@@ -106,11 +135,15 @@ class GameController:
 
     def load_map_file(self, map_file: str):
         planet_id = 1
-        with open(map_file, 'r') as f:
+        with open(map_file, "r") as f:
             for line in f:
-                affix, x_pos, y_pos, player_id, ships, ship_growth = line.split(' ')
+                affix, x_pos, y_pos, player_id, ships, ship_growth = line.split(" ")
                 x_pos, y_pos = float(x_pos), float(y_pos)
-                player_id, ships, ship_growth = int(player_id), int(ships), int(ship_growth)
+                player_id, ships, ship_growth = (
+                    int(player_id),
+                    int(ships),
+                    int(ship_growth),
+                )
                 planet = Planet(planet_id, x_pos, y_pos, player_id, ships, ship_growth)
                 self.game_state.planets.append(planet)
                 planet_id += 1
@@ -150,7 +183,9 @@ class GameController:
             if fleet.turns_remaining <= 0:
                 self.land_fleet(fleet)
 
-        self.game_state.fleets = [fleet for fleet in self.game_state.fleets if fleet.turns_remaining > 0]
+        self.game_state.fleets = [
+            fleet for fleet in self.game_state.fleets if fleet.turns_remaining > 0
+        ]
 
         for planet in self.game_state.planets:
             if planet.player_id != 0:
@@ -166,25 +201,36 @@ class GameController:
                 planet.ships *= -1
                 planet.player_id = fleet.player_id
 
-    def launch_fleet(self, source_planet: Planet, destination_planet: Planet, ships: int):
+    def launch_fleet(
+        self, source_planet: Planet, destination_planet: Planet, ships: int
+    ):
         if ships <= 0:
-            raise ValueError('Can only launch a positive number of ships')
+            raise ValueError("Can only launch a positive number of ships")
 
         if source_planet.ships - ships < 0:
             raise ValueError(
-                f'Player {source_planet.player_id} tried to launch {ships} ships from {source_planet} '
-                f'(has only {source_planet.ships} ships)')
+                f"Player {source_planet.player_id} tried to launch {ships} ships from {source_planet} "
+                f"(has only {source_planet.ships} ships)"
+            )
 
         source_planet.ships -= ships
-        distance = self.game_state.get_trip_length(source_planet.planet_id, destination_planet.planet_id)
-        fleet = Fleet(ships, source_planet.player_id, source_planet.planet_id, destination_planet.planet_id, distance)
+        distance = self.game_state.get_trip_length(
+            source_planet.planet_id, destination_planet.planet_id
+        )
+        fleet = Fleet(
+            ships,
+            source_planet.player_id,
+            source_planet.planet_id,
+            destination_planet.planet_id,
+            distance,
+        )
         fleet.fleet_id = self.game_state.next_fleet_id
         self.game_state.next_fleet_id += 1
         self.game_state.fleets.append(fleet)
 
     def process_command(self, command: FleetCommand, player_id: int):
         if not isinstance(command, FleetCommand):
-            print(f'Player {player_id} returned an object that was not a FleetCommand')
+            print(f"Player {player_id} returned an object that was not a FleetCommand")
             return
 
         source_planet = self.game_state.get_planet(command.source_planet)
@@ -192,32 +238,43 @@ class GameController:
         ships = int(command.ships)
 
         if not source_planet:
-            print(f'Player {player_id} tried to launch {ships} ships from unknown planet {command.source_planet}')
+            print(
+                f"Player {player_id} tried to launch {ships} ships from unknown planet {command.source_planet}"
+            )
             return
 
         if ships <= 0:
-            print(f'Player {player_id} tried to send an invalid number of ships "{ships}" '
-                  f'from planet {source_planet} to {destination_planet}')
+            print(
+                f'Player {player_id} tried to send an invalid number of ships "{ships}" '
+                f"from planet {source_planet} to {destination_planet}"
+            )
             return
 
         if ships > source_planet.ships:
-            print(f'Player {player_id} tried to launch too may ships {ships} from {source_planet} '
-                  f'(it has only {source_planet.ships} ships)')
+            print(
+                f"Player {player_id} tried to launch too may ships {ships} from {source_planet} "
+                f"(it has only {source_planet.ships} ships)"
+            )
             return
 
         if not destination_planet:
-            print(f'Player {player_id} tried to launch {ships} from {source_planet} '
-                  f'to an unknown planet {command.destination_planet}')
+            print(
+                f"Player {player_id} tried to launch {ships} from {source_planet} "
+                f"to an unknown planet {command.destination_planet}"
+            )
             return
 
         if source_planet.player_id != player_id:
             print(
-                f'Player {player_id} tried to launch {ships} ships '
-                f'from planet {source_planet} which it doesn\'t own')
+                f"Player {player_id} tried to launch {ships} ships "
+                f"from planet {source_planet} which it doesn't own"
+            )
             return
 
         if source_planet == destination_planet:
-            print(f'Player {player_id} tried to send {ships} ships to/from {source_planet}')
+            print(
+                f"Player {player_id} tried to send {ships} ships to/from {source_planet}"
+            )
             return
 
         self.launch_fleet(source_planet, destination_planet, ships)
@@ -226,7 +283,13 @@ class GameController:
         lost_player = self.game_state.get_lost_player()
         if lost_player or self.turn_count >= self.turn_limit:
             winning_player = self.game_state.get_winning_player()
-            return GameResult(self.selected_map, self.bot_1, self.bot_2, winning_player, self.turn_count)
+            return GameResult(
+                self.selected_map,
+                self.bot_1,
+                self.bot_2,
+                winning_player,
+                self.turn_count,
+            )
 
         return None
 
@@ -242,7 +305,9 @@ class GameState:
         self.next_fleet_id = 1
 
     def get_planet(self, planet_id: int):
-        return next((planet for planet in self.planets if planet.planet_id == planet_id), None)
+        return next(
+            (planet for planet in self.planets if planet.planet_id == planet_id), None
+        )
 
     def get_planets(self):
         return self.planets
@@ -258,12 +323,14 @@ class GameState:
 
     def get_player_planets(self, player_id: int):
         if player_id not in [0, 1, 2]:
-            raise ValueError('Cannot get planets for players other than 0,1,2')
+            raise ValueError("Cannot get planets for players other than 0,1,2")
 
         return [planet for planet in self.planets if planet.player_id == player_id]
 
     def get_fleet(self, fleet_id):
-        return next((fleet for fleet in self.fleets if fleet.fleet_id == fleet_id), None)
+        return next(
+            (fleet for fleet in self.fleets if fleet.fleet_id == fleet_id), None
+        )
 
     def get_fleets(self):
         return self.fleets
@@ -276,7 +343,7 @@ class GameState:
 
     def get_player_fleets(self, player_id: int):
         if player_id not in [1, 2]:
-            raise ValueError('Can only get fleets for players 1 and 2')
+            raise ValueError("Can only get fleets for players 1 and 2")
 
         return [fleet for fleet in self.fleets if fleet.player_id == player_id]
 
@@ -284,7 +351,9 @@ class GameState:
         return self.get_player_planets(player_id) or self.get_player_planets(player_id)
 
     def get_total_ship_count(self, player_id: int):
-        planet_ships = sum([planet.ships for planet in self.get_player_planets(player_id)])
+        planet_ships = sum(
+            [planet.ships for planet in self.get_player_planets(player_id)]
+        )
         fleet_ships = sum([fleet.ships for fleet in self.get_player_fleets(player_id)])
         return planet_ships + fleet_ships
 
@@ -314,6 +383,12 @@ class GameState:
         return len(self.get_enemy_planets())
 
     def get_trip_length(self, source_planet: int, destination_planet: int):
-        x_dist = self.get_planet(source_planet).x_pos - self.get_planet(destination_planet).x_pos
-        y_dist = self.get_planet(source_planet).y_pos - self.get_planet(destination_planet).y_pos
+        x_dist = (
+            self.get_planet(source_planet).x_pos
+            - self.get_planet(destination_planet).x_pos
+        )
+        y_dist = (
+            self.get_planet(source_planet).y_pos
+            - self.get_planet(destination_planet).y_pos
+        )
         return math.hypot(x_dist, y_dist)
